@@ -2,6 +2,7 @@ import xml.etree.ElementTree as ET
 import os.path
 import copy
 
+
 class Ped:
     def __init__(self, ped_dictionary):
         for k, v in ped_dictionary.items():
@@ -28,14 +29,15 @@ class Ped:
         return (f'Name: {self.Name}')
 
 
-def ped_generator(xml_tree):
+def ped_generator(xml_file):
     """
     Take the ped.meta file and extract all the peds in it
 
+    returns -> List of ped objects
     """
     list_of_peds = []
 
-    ped_parsed = ET.parse(xml_tree)
+    ped_parsed = ET.parse(xml_file)
     ped_root = ped_parsed.getroot()
 
     ped_data = ped_root.findall('./InitDatas/Item')
