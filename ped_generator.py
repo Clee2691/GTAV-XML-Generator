@@ -1,5 +1,5 @@
 import xml.etree.ElementTree as ET
-
+import os.path
 
 class Ped:
     def __init__(self, ped_dictionary):
@@ -7,9 +7,14 @@ class Ped:
             setattr(self, k, v)
         print('New ped created!')
 
+    def return_att_dict(self):
+        return self.__dict__
+
     def display_attributes(self):
+        attr_dict = self.return_att_dict()
+
         counter = 1
-        for attr, val in self.__dict__.items():
+        for attr, val in attr_dict.items():
             print(f'{counter}. Attribute: {attr} | Value: {val}')
             counter += 1
 
@@ -33,7 +38,7 @@ def ped_generator(xml_tree):
     ped_root = ped_parsed.getroot()
 
     ped_data = ped_root.findall('./InitDatas/Item')
-
+    # TODO: Distinguish tags with values instead of just text
     for ped_element in ped_data:
         ped_dictionary = {}
         for param in ped_element:
@@ -60,7 +65,7 @@ def ped_generator(xml_tree):
 def generate_new_ped(ped_template, new_val_dict):
     """
     Create a new custom ped with values specified by user
-    
+
     """
     new_ped = ped_template
 
@@ -68,6 +73,28 @@ def generate_new_ped(ped_template, new_val_dict):
 
     return new_ped
 
+def ped_xml_writer(new_ped = None):
+    ped_meta_path = 'ped_xml_files/peds.meta'
+
+    if os.path.exists(ped_meta_path) == False:
+        print('Looks like no peds.meta file is present, hang on while it is created...')
+
+        with open(ped_meta_path, 'x'):
+            root = ET.Element('CPedModelInfo__InitDataList')
+            init_data_node = ET.SubElement(root, 'InitDatas')
+            
+            ET.ElementTree(root).write(ped_meta_path)
+
+    if new_ped != None:
+        ped_tree = ET.ElementTree(file='ped_xml_files/peds.meta')
+        ped_data_root = ped_tree.getroot().find('InitDatas')
+        ped_item = ET.SubElement(ped_data_root, 'Item')
+
+        for attr, val in new_ped.return_att_dict().items():
+            ET.SubElement(ped_item, attr).text = val
+
+        ped_tree.write('ped_xml_files/peds.meta')
+    
     
 if __name__ == "__main__":
     ped_list = ped_generator('database/peds.ymt.xml')
