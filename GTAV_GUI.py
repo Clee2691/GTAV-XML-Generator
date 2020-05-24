@@ -1,4 +1,4 @@
-import ped_generator
+import ped_xml_funcs
 
 import PyQt5.QtWidgets as pqt5
 
@@ -8,7 +8,7 @@ gtav_gui.setStyle('Fusion')
 main_window = pqt5.QWidget()
 
 layout = pqt5.QVBoxLayout()
-peds = ped_generator.ped_generator('database/peds.ymt.xml')
+peds = ped_xml_funcs.ped_generator('database/peds.ymt.xml')
 
 for k, v in peds[0].return_att_dict().items():
     if v != None:
