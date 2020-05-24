@@ -1,5 +1,6 @@
 import xml.etree.ElementTree as ET
 import os.path
+import copy
 
 class Ped:
     def __init__(self, ped_dictionary):
@@ -38,7 +39,7 @@ def ped_generator(xml_tree):
     ped_root = ped_parsed.getroot()
 
     ped_data = ped_root.findall('./InitDatas/Item')
-    # TODO: Distinguish tags with values instead of just text
+
     for ped_element in ped_data:
         ped_dictionary = {}
         for param in ped_element:
@@ -49,7 +50,7 @@ def ped_generator(xml_tree):
                     ped_dictionary[param.tag].append(item.text)
             # Only has attribute with 'value' - usually true or false
             elif param.attrib:
-                ped_dictionary[param.tag] = param.attrib['value']
+                ped_dictionary[param.tag] = param.attrib
             # Not an empty tag
             elif param.text != None:
                 ped_dictionary[param.tag] = param.text
@@ -67,7 +68,7 @@ def generate_new_ped(ped_template, new_val_dict):
     Create a new custom ped with values specified by user
 
     """
-    new_ped = ped_template
+    new_ped = copy.deepcopy(ped_template)
 
     new_ped.update_attr(new_val_dict)
 
@@ -91,21 +92,13 @@ def ped_xml_writer(new_ped = None):
         ped_item = ET.SubElement(ped_data_root, 'Item')
 
         for attr, val in new_ped.return_att_dict().items():
-            ET.SubElement(ped_item, attr).text = val
+            if isinstance(val, list):
+                item1_subset = ET.SubElement(ped_item, attr)
+                for stuff in val:
+                    ET.SubElement(item1_subset, 'Item').text = stuff
+            elif isinstance(val, dict):
+                ET.SubElement(ped_item, attr, val)
+            else:
+                ET.SubElement(ped_item, attr).text = val
 
         ped_tree.write('ped_xml_files/peds.meta')
-    
-    
-if __name__ == "__main__":
-    ped_list = ped_generator('database/peds.ymt.xml')
-
-    ped_input = input('Template: ')
-
-    for ped in ped_list:
-        if ped.Name == 'ped_input':
-            ped_template = ped
-            break
-    
-    custom_val_dict = {'Pedtype': 'CIVFEMALE', 'PropsName': None, 'PedCapsuleName': 'Test_Capsule'}
-    generate_new_ped(ped_template, custom_val_dict)
-
