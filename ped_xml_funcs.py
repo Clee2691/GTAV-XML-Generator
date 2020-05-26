@@ -16,7 +16,7 @@ class Ped:
     def __init__(self, ped_dictionary):
         for k, v in ped_dictionary.items():
             setattr(self, k, v)
-        print('New ped created!')
+        #print('New ped created!')
 
     def return_att_dict(self):
         return self.__dict__
@@ -97,6 +97,30 @@ def generate_new_ped(ped_template, new_val_dict = None):
         new_ped.update_attr(new_val_dict)
         print('Custom ped created!')
         return new_ped
+
+
+def attr_db(peds_xml_file):
+    """
+    Gather possible entries for each ped attribute through peds.meta file
+    Only need to run it once.
+
+    41/71 entries have text values
+    
+    """
+    ped_list = ped_generator(peds_xml_file)
+
+    ped_attrib_db = {}
+
+    for ped in ped_list:
+        for k, v in ped.return_att_dict().items():
+            if v == None or isinstance(v, dict) or isinstance(v, list):
+                continue
+            elif k not in ped_attrib_db:
+                ped_attrib_db[k] = {v}
+            else:
+                ped_attrib_db[k].add(v)
+
+    return ped_attrib_db
 
 
 def ped_xml_writer(new_ped = None):
