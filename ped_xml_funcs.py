@@ -47,38 +47,51 @@ def ped_generator(xml_file):
 
     """
     list_of_peds = []
-
-    ped_parsed = ET.parse(xml_file)
-    ped_root = ped_parsed.getroot()
-
-    # I just wanted the items in InitDatas
-    ped_data = ped_root.findall('./InitDatas/Item')
-
-    for ped_element in ped_data:
-        ped_dictionary = {}
-        for param in ped_element:
-            # Parameter has child elements
-            if len(param) > 0:
-                ped_dictionary[param.tag] = []
-                for item in param:
-                    ped_dictionary[param.tag].append(item.text)
-            # Only has attribute with 'value'; Usually does not contain text as well
-            elif param.attrib:
-                ped_dictionary[param.tag] = param.attrib
-            # Not an empty tag - Only has text
-            elif param.text != None:
-                ped_dictionary[param.tag] = param.text
-            else:
-                # No attribute or text - Empty tag
-                ped_dictionary[param.tag] = None
-
-        list_of_peds.append(Ped(ped_dictionary))
-
-    print('Ped database populated! Create a new ped!')
-    return list_of_peds
+    err_message = None
 
 
-def generate_new_ped(ped_template, new_val_dict = None):
+    try:
+        ped_parsed = ET.parse(xml_file)
+        ped_root = ped_parsed.getroot()
+
+        if ped_root.tag == 'CPedModelInfo__InitDataList':
+
+            # I just wanted the items in InitDatas
+            ped_data = ped_root.findall('./InitDatas/Item')
+
+            for ped_element in ped_data:
+                ped_dictionary = {}
+                for param in ped_element:
+                    # Parameter has child elements
+                    if len(param) > 0:
+                        ped_dictionary[param.tag] = []
+                        for item in param:
+                            ped_dictionary[param.tag].append(item.text)
+                    # Only has attribute with 'value'; Usually does not contain text as well
+                    elif param.attrib:
+                        ped_dictionary[param.tag] = param.attrib
+                    # Not an empty tag - Only has text
+                    elif param.text != None:
+                        ped_dictionary[param.tag] = param.text
+                    else:
+                        # No attribute or text - Empty tag
+                        ped_dictionary[param.tag] = None
+
+                list_of_peds.append(Ped(ped_dictionary))
+
+            print('Ped database populated! Choose a ped template to start the ped creation process!')
+
+            return list_of_peds, err_message
+        else:
+            err_message = 'NOT VALID PEDS FILE'
+            return None, err_message
+
+    except FileNotFoundError:
+        err_message = 'FILE NOT FOUND'
+        return None, err_message
+
+
+def generate_new_ped(ped_template = None, new_val_dict = None):
 
     """
     Create a new custom ped with values specified by a dictionary
@@ -92,29 +105,28 @@ def generate_new_ped(ped_template, new_val_dict = None):
     if new_val_dict == None:
         return print('No point generating a new ped if you do not have values to change...')
     else:
-        # Use copy ped_template to be used as the new ped
         new_ped = copy.deepcopy(ped_template)
         new_ped.update_attr(new_val_dict)
         print('Custom ped created!')
         return new_ped
 
 
-def attr_db(peds_xml_file):
+def attr_db(peds_list):
     """
     Gather possible entries for each ped attribute through peds.meta file
     Only need to run it once.
 
-    41/71 entries have text values
-    
-    """
-    ped_list = ped_generator(peds_xml_file)
+    69/71 entries have options
 
+    """
     ped_attrib_db = {}
 
-    for ped in ped_list:
+    for ped in peds_list:
         for k, v in ped.return_att_dict().items():
-            if v == None or isinstance(v, dict) or isinstance(v, list):
+            if v == None:
                 continue
+            elif isinstance(v, dict) or isinstance(v, list):
+                ped_attrib_db[k] = v
             elif k not in ped_attrib_db:
                 ped_attrib_db[k] = {v}
             else:
