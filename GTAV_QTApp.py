@@ -6,7 +6,11 @@ from PyQt5.QtCore import *
 
 
 class GTAVController:
-    """ Controller class for GUI """
+    """ 
+    Controller class for GUI
+    Connects the buttons/ defines the functions each button does
+    Passes gui creation to main gui class
+    """
 
     def __init__(self, view):
         self.view = view
@@ -17,12 +21,37 @@ class GTAVController:
         self.view.path_btn.clicked.connect(self.load_ped_db)
         self.view.template_load_btn.clicked.connect(self.pick_ped_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
+        self.view.tree.doubleClicked.connect(self.dir_view_select)
 
+
+    def dir_view_select(self, index):
+        """ 
+        Update path_line_edit field with valid peds meta or xml file 
+        QTreeView.doubleclicked event passes QModelIndex object as a parameter
+        """
+        # Need a temp QFileSystemModel as filePath() method is accessible from that class and NOT QModelIndex class
+        temp_model = QFileSystemModel()
+        valid_file_types = ['xml File', 'meta File']
+
+        # Get the filepath - index = QModelIndex object
+        file_path = temp_model.filePath(index)
+
+        # Returns a string displaying type of file
+        file_type = temp_model.type(index)
+        
+        # Determine if it is a file not directory
+        # fileInfo returns a QFileInfo object
+        file_isFile = temp_model.fileInfo(index).isFile()
+        
+        if file_isFile and file_type in valid_file_types:
+            self.view.set_ped_file_path(file_path)
     
+
     def load_ped_db(self):
         """ 
         Initial loading of the ped database
         """
+        self.view.clear_combo_box()
 
         xml_path = self.view.get_ped_path_text()
         if xml_path == "":
@@ -42,20 +71,55 @@ class GTAVController:
 
             # Generate the attribute options with the ped list
             self.attr_db = ped_xml_funcs.attr_db(self.ped_list)
+            QMessageBox.information(QWidget(), 'SUCCESS','Ped DB Loaded!\nChoose a ped template to get started.')
 
     def pick_ped_template(self):
         """
         Show params for the picked ped
         """
-        current_ped = self.view.get_ped_template_text()
+        current_ped_text = self.view.get_ped_template_text()
 
-        if current_ped in self.attr_db['Name']:
-            self.view.generate_ped_param_form(self.ped_list, self.attr_db, current_ped)
+        if current_ped_text in self.attr_db['Name']:
+
+            self.cur_ped = None
+
+            for ped in self.ped_list:
+                if ped.Name.upper() == current_ped_text.upper():
+                    self.cur_ped = ped
+
+            self.view.generate_ped_param_form(self.attr_db, self.cur_ped)
+
         else:
-            self.view.error_dialogs('INVALID TEMPLATE', current_ped)
+            self.view.error_dialogs('INVALID TEMPLATE', current_ped_text)
+
+        return self.cur_ped
 
     def generate_xml(self):
-        pass
+
+        if self.view.form_layout.count() == 0:
+            self.view.error_dialogs('NO PED INFO', 'No ped template found to generate xml!')
+            return
+
+        new_val_dict = {}
+
+        for param in range(self.view.form_layout.rowCount()):
+            # itemAt(row, column) - column index [0(Label), 1(Lineedit/combobox)]
+            row_label = self.view.form_layout.itemAt(param, 0).widget().text()
+            row_param_widget = self.view.form_layout.itemAt(param, 1).widget()
+
+            if isinstance(row_param_widget, QLineEdit):
+                new_val_dict[row_label] = row_param_widget.text()
+
+            elif isinstance(row_param_widget, QComboBox):
+                new_val_dict[row_label] = row_param_widget.currentText()
+        
+        custom_ped, err_mess = ped_xml_funcs.generate_new_ped(self.cur_ped, new_val_dict)
+
+        if not err_mess:
+            ped_xml_funcs.ped_xml_writer(custom_ped)
+            QMessageBox.information(QWidget(), 'SUCCESS', 'SUCCESS:\nCheck peds.meta file for the custom ped!')
+        else:
+            self.view.error_dialogs(err_message, 'ERROR:\nCustom ped generation failed! Try again.')
 
 
 class GTAVMainWindow(QMainWindow):
@@ -68,10 +132,12 @@ class GTAVMainWindow(QMainWindow):
         # Main window settings
         self.setWindowTitle('GTA V Addon XML Creator')
         # setGeometry(x-pos, y-pos, width, height)
-        self.setGeometry(800,200,500,500)
+        self.setGeometry(800,200,715,500)
 
         # Main layout
-        self.main_layout = QVBoxLayout()
+        self.main_layout = QHBoxLayout()
+        self.dir_layout = QVBoxLayout()
+        self.app_layout = QVBoxLayout()
         
         # QMainwindow needs a central widget
         self.centralWidget = QWidget()
@@ -79,12 +145,38 @@ class GTAVMainWindow(QMainWindow):
         self.centralWidget.setLayout(self.main_layout)
 
         # Create gui elements
+        # Create the directory view first and add to main layout
+        self.create_dir_view()
+        self.main_layout.addLayout(self.dir_layout)
+
+        # Create the rest of the gui and add to main layout
         self.create_title_labels()
         self.create_load_ped_xml()
         self.create_load_template()
         self.create_scroll_area()
         self.create_generate_btn()
 
+        self.main_layout.addLayout(self.app_layout)
+
+
+    def create_dir_view(self):
+        # Set up the model/ widget
+        self.model = QFileSystemModel()
+        self.model.setRootPath('')
+
+        # Treeview object needs a model set to it
+        self.tree = QTreeView()
+        self.tree.setModel(self.model)
+
+        # Set up the tree view
+        self.tree.setIndentation(15)
+        self.tree.setSortingEnabled(False)
+        self.tree.setColumnWidth(0, 150) # Dir Name Column (Column, size)
+        self.tree.setColumnWidth(1, 30) # Size Column
+        self.tree.setColumnWidth(2, 30) # File type column
+
+        self.dir_layout.addWidget(self.tree)
+        
 
     def create_title_labels(self):
         # Layout
@@ -103,7 +195,7 @@ class GTAVMainWindow(QMainWindow):
         self.title_layout.addWidget(self.author_label)
 
         # Add to main layout
-        self.main_layout.addLayout(self.title_layout)
+        self.app_layout.addLayout(self.title_layout)
 
 
     def create_load_ped_xml(self):
@@ -122,7 +214,7 @@ class GTAVMainWindow(QMainWindow):
         self.load_ped_xml_layout.addWidget(self.path_btn)
 
         # Add the main layout
-        self.main_layout.addLayout(self.load_ped_xml_layout)
+        self.app_layout.addLayout(self.load_ped_xml_layout)
         self.path_btn.setFocus()
 
 
@@ -149,7 +241,7 @@ class GTAVMainWindow(QMainWindow):
         self.template_layout.addWidget(self.template_load_btn)
 
         # Add to the main layout
-        self.main_layout.addLayout(self.template_layout)
+        self.app_layout.addLayout(self.template_layout)
 
 
     def create_scroll_area(self):
@@ -169,7 +261,7 @@ class GTAVMainWindow(QMainWindow):
         self.scroll_area.setWidget(self.scroll_widget)
 
         # Set it to the main layout
-        self.main_layout.addWidget(self.scroll_area)
+        self.app_layout.addWidget(self.scroll_area)
 
 
     def create_generate_btn(self):
@@ -178,8 +270,9 @@ class GTAVMainWindow(QMainWindow):
         """
         self.generate_btn = QPushButton('Generate XML')
         self.generate_btn.setFixedHeight(40)
+        self.generate_btn.setDisabled(True)
 
-        self.main_layout.addWidget(self.generate_btn)
+        self.app_layout.addWidget(self.generate_btn)
 
     
     def populate_ped_cbox(self, ped_list):
@@ -194,37 +287,15 @@ class GTAVMainWindow(QMainWindow):
             self.template_cbox.setDisabled(False)
 
 
-    def remove_params(self):
-        """ 
-        Clear out rows in form layout before repopulating
-        """
-
-        form_items = self.form_layout.rowCount()
-
-        if form_items == 0:
-            pass
-        else:
-            for item in reversed(range(form_items)):
-                self.form_layout.removeRow(item)
-
-
-    def generate_ped_param_form(self, ped_list, attr_dict, cur_ped_template):
+    def generate_ped_param_form(self, attr_dict, cur_ped_template):
         """
         Populate the scroll bar area with ped params
         Connects the Load Template button
         """
 
-        if self.form_layout.rowCount() != 0:
-            self.remove_params()
-            print(self.form_layout.rowCount())
-
-        cur_ped = None
-
-        for ped in ped_list:
-            if ped.Name.upper() == cur_ped_template.upper():
-                cur_ped = ped
+        self.remove_params()
         
-        for k, v in cur_ped.return_att_dict().items():
+        for k, v in cur_ped_template.return_att_dict().items():
             # Allow editing of name
             if k == 'Name':
                 self.form_layout.addRow(QLabel(k), QLineEdit(v))
@@ -251,7 +322,8 @@ class GTAVMainWindow(QMainWindow):
                 else:
                     param_edit_line = QLineEdit(v)
                     self.form_layout.addRow(param_label, param_edit_line)
-   
+
+        self.generate_btn.setDisabled(False)
 
     def error_dialogs(self, error, other_message=None):
         """
@@ -265,16 +337,41 @@ class GTAVMainWindow(QMainWindow):
             QMessageBox.warning(self, error, 'ERROR: \nNot a valid peds.ymt.xml or peds.meta file! Choose a different file!')
         elif error == 'INVALID TEMPLATE':
             QMessageBox.warning(self, error, f'ERROR: \n{other_message} is not a valid ped template.')
+        elif error == 'NO PED INFO':
+            QMessageBox.warning(self, error, other_message)
+        elif error == 'GENERATE FAILED':
+            QMessageBox(self, error, other_message)
     
+    def remove_params(self):
+        """ 
+        Clear out rows in form layout before repopulating
+        """
+
+        form_items = self.form_layout.rowCount()
+
+        if form_items == 0:
+            return
+        else:
+            for item in reversed(range(form_items)):
+                self.form_layout.removeRow(item)
+
+    def clear_combo_box(self):
+        if self.template_cbox.count() > 1:
+            self.template_cbox.clear()
+            self.remove_params()
+            self.template_cbox.addItem('-----Choose A Ped-----')
+            self.template_cbox.setCurrentIndex(0)
     
     def get_ped_path_text(self):
         return self.path_line_edit.text()
-        
+
+    def set_ped_file_path(self, file_path):
+        self.path_line_edit.setText(file_path)        
 
     def get_ped_template_text(self):
         return self.template_cbox.currentText()
-    
 
+    
 def main():
     app = QApplication(sys.argv) # Can accept cmdline arguments
     app.setStyle('Fusion')

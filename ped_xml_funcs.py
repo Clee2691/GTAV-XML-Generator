@@ -1,6 +1,7 @@
 import xml.etree.ElementTree as ET
-import os.path
+import os, os.path
 import copy
+from pathlib import Path
 
 
 class Ped:
@@ -101,14 +102,17 @@ def generate_new_ped(ped_template = None, new_val_dict = None):
     output -> new ped object with custom values
 
     """
+    error_mess = None
 
     if new_val_dict == None:
-        return print('No point generating a new ped if you do not have values to change...')
+        error_mess='GENERATE FAILED'
+        return error_mess
     else:
+        # Deepcopy so I don't override the template ped
         new_ped = copy.deepcopy(ped_template)
         new_ped.update_attr(new_val_dict)
-        print('Custom ped created!')
-        return new_ped
+
+        return new_ped, error_mess
 
 
 def attr_db(peds_list):
@@ -135,7 +139,7 @@ def attr_db(peds_list):
     return ped_attrib_db
 
 
-def ped_xml_writer(new_ped = None):
+def ped_xml_writer(new_ped):
     """
     Writes the custom ped to peds.meta file. If no file is present, will create one first.
     If no custom ped is passed, this function does nothing.
@@ -145,40 +149,39 @@ def ped_xml_writer(new_ped = None):
     Output -> Either new peds.meta file or append custom ped to peds.meta
     """
 
-    ped_meta_path = 'ped_xml_files/peds.meta'
+    ped_meta_path = Path('ped_xml_files/peds.meta')
+    ped_xml_path = Path('ped_xml_files/peds.xml')
+    
+    if ped_meta_path.exists():
+        ped_meta_path.rename(ped_meta_path.with_suffix('.xml'))
+        ped_tree = ET.ElementTree(file=ped_xml_path)
 
-    if os.path.exists(ped_meta_path) == False:
-        print('Looks like no peds.meta file is present, hang on while it is created...')
-
-        with open(ped_meta_path, 'x'):
-            root = ET.Element('CPedModelInfo__InitDataList')
-            init_data_node = ET.SubElement(root, 'InitDatas')
-            
-            ET.ElementTree(root).write(ped_meta_path)
-        
-        print('peds.meta file created! Located: {ped_meta_path}')
-
-    if new_ped != None:
-        ped_tree = ET.ElementTree(file='ped_xml_files/peds.meta')
         # InitDatas is the root for all ped items
         ped_data_root = ped_tree.getroot().find('InitDatas')
-        ped_item = ET.SubElement(ped_data_root, 'Item')
-
-        for attr, val in new_ped.return_att_dict().items():
-            # List datatype specifies parameter has more child elements
-            if isinstance(val, list):
-                item1_subset = ET.SubElement(ped_item, attr)
-                for subitem in val:
-                    ET.SubElement(item1_subset, 'Item').text = subitem
-            # Dictionary datatype specifies element only attributes
-            elif isinstance(val, dict):
-                ET.SubElement(ped_item, attr, val)
-            # Everything else should have text only
-            else:
-                ET.SubElement(ped_item, attr).text = val
-
-        ped_tree.write('ped_xml_files/peds.meta')
-
-        return print('Custom ped successfully written to peds.meta!')
+    
     else:
-        return print('You did not enter a new ped to add! No changes made.')
+        ped_xml_root = ET.Element('CPedModelInfo__InitDataList')
+        ped_data_root = ET.SubElement(ped_xml_root, 'InitDatas')
+        ped_tree=ET.ElementTree(ped_xml_root)
+        
+    ped_item = ET.SubElement(ped_data_root, 'Item')
+
+    for attr, val in new_ped.return_att_dict().items():
+        # List datatype specifies parameter has more child elements
+        if isinstance(val, list):
+            item1_subset = ET.SubElement(ped_item, attr)
+            for subitem in val:
+                ET.SubElement(item1_subset, 'Item').text = subitem
+        # Dictionary datatype specifies element only attributes
+        elif isinstance(val, dict):
+            ET.SubElement(ped_item, attr, val)
+        # Everything else should have text only
+        else:
+            ET.SubElement(ped_item, attr).text = val
+    try:
+        ped_tree.write(ped_xml_path, encoding='utf-8', xml_declaration=True, method='xml')
+
+        ped_xml_path.rename(ped_xml_path.with_suffix('.meta'))
+    except:
+        return
+    
