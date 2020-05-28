@@ -135,10 +135,13 @@ class GTAVMainWindow(QMainWindow):
         # setGeometry(x-pos, y-pos, width, height)
         self.setGeometry(800,200,715,500)
 
+        self.q_split = QSplitter()
+
         # Main layout
         self.main_layout = QHBoxLayout()
-        self.dir_layout = QVBoxLayout()
-        self.app_layout = QVBoxLayout()
+
+        # Widget for splitter
+        self.app_widget = QWidget()
         
         # QMainwindow needs a central widget
         self.centralWidget = QWidget()
@@ -148,16 +151,23 @@ class GTAVMainWindow(QMainWindow):
         # Create gui elements
         # Create the directory view first and add to main layout
         self.create_dir_view()
-        self.main_layout.addLayout(self.dir_layout)
+        #self.main_layout.addLayout(self.dir_layout)
+
+        # App Layout
+        self.app_layout = QVBoxLayout()
 
         # Create the rest of the gui and add to main layout
+         
         self.create_title_labels()
         self.create_load_ped_xml()
         self.create_load_template()
         self.create_scroll_area()
         self.create_generate_btn()
-
-        self.main_layout.addLayout(self.app_layout)
+        
+        self.app_widget.setLayout(self.app_layout)
+        self.q_split.addWidget(self.app_widget)
+        
+        self.main_layout.addWidget(self.q_split)
 
 
     def create_dir_view(self):
@@ -176,7 +186,7 @@ class GTAVMainWindow(QMainWindow):
         self.tree.setColumnWidth(1, 30) # Size Column
         self.tree.setColumnWidth(2, 30) # File type column
 
-        self.dir_layout.addWidget(self.tree)
+        self.q_split.addWidget(self.tree)
         
 
     def create_title_labels(self):
@@ -195,7 +205,7 @@ class GTAVMainWindow(QMainWindow):
         self.title_layout.addWidget(self.title_label)
         self.title_layout.addWidget(self.author_label)
 
-        # Add to main layout
+        # Add to app layout
         self.app_layout.addLayout(self.title_layout)
 
 
