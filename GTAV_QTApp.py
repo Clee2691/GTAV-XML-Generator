@@ -3,6 +3,7 @@ import sys
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
+from PyQt5.QtGui import *
 
 
 class GTAVController:
@@ -375,6 +376,21 @@ class GTAVMainWindow(QMainWindow):
 def main():
     app = QApplication(sys.argv) # Can accept cmdline arguments
     app.setStyle('Fusion')
+
+    # Set Fusion style to be dark  themed
+    # Palette has 3 groups: Active, inactive, disabled
+    palette = QPalette()
+    palette.setColor(QPalette.Window, QColor(53, 53, 53))
+    palette.setColor(QPalette.WindowText, Qt.white)
+    palette.setColor(QPalette.Base, QColor(15,15,15))
+    palette.setColor(QPalette.Disabled, QPalette.Base, QColor(40, 40, 40))
+    palette.setColor(QPalette.Text, Qt.white)
+    palette.setColor(QPalette.Disabled, QPalette.Text, Qt.gray)
+    palette.setColor(QPalette.Button, QColor(53,53,53))
+    palette.setColor(QPalette.ButtonText, Qt.white)
+    palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.gray)
+
+    app.setPalette(palette)
 
     # Main UI
     main_ui = GTAVMainWindow()
