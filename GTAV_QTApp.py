@@ -16,6 +16,7 @@ class GTAVController:
     def __init__(self, view):
         self.view = view
         self.conn_btn_signals()
+        self.create_menu_actions()
 
 
     def conn_btn_signals(self):
@@ -23,6 +24,96 @@ class GTAVController:
         self.view.template_load_btn.clicked.connect(self.pick_ped_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
         self.view.tree.doubleClicked.connect(self.dir_view_select)
+
+    # Menu actions
+    def create_menu_actions(self):
+        # File menu section
+        self.view.load_action = QAction('Load file', self.view)
+        self.view.menu_file.addAction(self.view.load_action)
+        self.view.load_action.triggered.connect(self.load_file_dialog)
+
+        self.view.exit_action = QAction('Exit', self.view)
+        self.view.menu_file.addAction(self.view.exit_action)
+        self.view.exit_action.triggered.connect(qApp.quit)
+
+        # Help menu section
+        self.view.help_action = QAction('Help', self.view)
+        self.view.about_action = QAction('About', self.view)
+        self.view.menu_help.addAction(self.view.help_action)
+        self.view.help_action.triggered.connect(self.help_dialog)
+        self.view.menu_help.addAction(self.view.about_action)
+        self.view.about_action.triggered.connect(self.about_dialog)
+    
+    def help_dialog(self):
+        self.help_dialog = QDialog()
+        self.help_dialog.setMinimumSize(500,500)
+        self.help_dialog.setMaximumSize(800, 500)
+        self.help_dialog.setWindowTitle('Help - How To')
+
+        # Layout
+        self.help_layout = QVBoxLayout()
+        self.help_label = QLabel()
+
+        self.help_text = """ <html> <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
+        <h1 align="center">Help - How To Use</h1>
+        <dl>
+        <dt>Step 1. Load Ped File</dt>
+        <dd>- Select a peds meta or XML file either through the file browser or file menu and press load.</dd><br>
+        <dt>Step 2. Pick Ped Template</dt>
+        <dd>- Once the database is loaded, pick a ped template to start editing the parameters.</dt><br>
+        <dt>Step 3. Edit Ped Parameters</dt>
+        <dd>Edit the parameters you want and press generate meta file.</dd><br>
+        <dt>Step 4. Locate File</dt>
+        <dd>Check peds_xml_files folder for the generated meta file.</dd><br>
+        <dt>Step 5. Enjoy!</dt>
+        <dd>Place file in desired location and enjoy your addon ped!</dd><br>
+        </ol>
+        </body>
+        </html>
+        """
+
+        self.help_label.setText(self.help_text)
+        self.button_box = QDialogButtonBox(QDialogButtonBox.Ok)
+        self.button_box.accepted.connect(self.help_dialog.accept)
+        
+        self.help_layout.addWidget(self.help_label)
+        self.help_layout.addWidget(self.button_box)
+        self.help_dialog.setLayout(self.help_layout)
+
+        self.help_dialog.exec_()
+
+    def about_dialog(self):
+        self.about_dialog = QDialog()
+        self.about_dialog.setWindowTitle('ABOUT GTA V XML CREATOR')
+        self.about_dialog.setSizeGripEnabled(True)
+
+        about_text = """ 
+        <html> 
+        <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
+        <h1 align="center">GTA V Addon XML Creator V1.0</h1>
+        <h3 align="center"> Author: Steeldrgn \u00A92020</h3>
+        </body>
+        </html>
+        """
+        # layout
+        self.about_layout = QVBoxLayout()
+
+        self.about_label = QLabel()
+        self.about_label.setText(about_text)
+
+        self.about_ok_btn = QDialogButtonBox(QDialogButtonBox.Ok)
+        self.about_ok_btn.accepted.connect(self.about_dialog.accept)
+
+        self.about_layout.addWidget(self.about_label)
+        self.about_layout.addWidget(self.about_ok_btn)
+
+        self.about_dialog.setLayout(self.about_layout)
+        self.about_dialog.exec_()
+
+    def load_file_dialog(self):
+        self.load_file_dialog = QFileDialog()
+        file_path, _ = self.load_file_dialog.getOpenFileName(self.load_file_dialog, "Load Peds META or XML File", '','XML, META Files (*.meta *.xml)')
+        self.view.set_ped_file_path(file_path)
 
 
     def dir_view_select(self, index):
@@ -131,9 +222,14 @@ class GTAVMainWindow(QMainWindow):
         super().__init__()
 
         # Main window settings
-        self.setWindowTitle('GTA V Addon XML Creator')
+        self.setWindowTitle('GTA V Addon XML Creator V1.0')
         # setGeometry(x-pos, y-pos, width, height)
         self.setGeometry(800,200,715,500)
+        
+        # Status bar located at bottom of window
+        self.statusBar()
+
+        self.create_menu_bar()
 
         self.q_split = QSplitter()
 
@@ -169,14 +265,29 @@ class GTAVMainWindow(QMainWindow):
         
         self.main_layout.addWidget(self.q_split)
 
+    def create_menu_bar(self):
+        # Create a menubar
+        self.menu_bar = self.menuBar()
+        self.menu_file = self.menu_bar.addMenu('&File')
+        self.menu_help = self.menu_bar.addMenu('&Help')
+
 
     def create_dir_view(self):
         # Set up the model/ widget
         self.model = QFileSystemModel()
-        self.model.setRootPath('')
+        self.filter_list = []
+        self.filter_list.append('*.meta')
+        self.filter_list.append('*.xml')
+
+        self.model.setNameFilters(self.filter_list)
+        self.model.setNameFilterDisables(False)
+
+        self.model.setRootPath('C:/')
 
         # Treeview object needs a model set to it
         self.tree = QTreeView()
+        self.tree.setAnimated(True)
+        
         self.tree.setModel(self.model)
 
         # Set up the tree view
@@ -194,12 +305,14 @@ class GTAVMainWindow(QMainWindow):
         self.title_layout = QVBoxLayout()
 
         # Labels
-        self.title_label = QLabel('GTA V Addon XML Creator')
+        self.title_label = QLabel('GTA V Addon XML Creator V1.0')
         self.title_label.setFixedHeight(25)
         self.title_label.setAlignment(Qt.AlignCenter)
+        self.title_label.setFont(QFont('pricedown', 20))
         self.author_label = QLabel('By: Steeldrgn')
-        self.author_label.setFixedHeight(25)
+        self.author_label.setFixedHeight(30)
         self.author_label.setAlignment(Qt.AlignCenter)
+        self.author_label.setFont(QFont('pricedown', 20))
 
         # Add labels to layout
         self.title_layout.addWidget(self.title_label)
@@ -284,7 +397,7 @@ class GTAVMainWindow(QMainWindow):
         self.generate_btn.setDisabled(True)
 
         self.app_layout.addWidget(self.generate_btn)
-
+        
     
     def populate_ped_cbox(self, ped_list):
         """
@@ -401,6 +514,17 @@ def main():
     palette.setColor(QPalette.Disabled, QPalette.ButtonText, Qt.gray)
 
     app.setPalette(palette)
+
+    # Adding a custom font
+    # Create new QFontdatabase class
+    font_db = QFontDatabase()
+    # Add custom font into the database
+    font_id = font_db.addApplicationFont('fonts/pricedownbl.ttf')
+    # Add font to a font family
+    pd_font_fam = font_db.applicationFontFamilies(font_id)
+    pricedown = QFont(pd_font_fam[0])
+    
+    app.setFont(QFont('Arial', 11))
 
     # Main UI
     main_ui = GTAVMainWindow()
