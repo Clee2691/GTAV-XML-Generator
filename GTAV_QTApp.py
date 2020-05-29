@@ -23,6 +23,7 @@ class GTAVController:
         self.view.path_btn.clicked.connect(self.load_ped_db)
         self.view.template_load_btn.clicked.connect(self.pick_ped_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
+
         self.view.tree.doubleClicked.connect(self.dir_view_select)
 
     # Menu actions
@@ -44,6 +45,7 @@ class GTAVController:
         self.view.menu_help.addAction(self.view.about_action)
         self.view.about_action.triggered.connect(self.about_dialog)
     
+
     def help_dialog(self):
         self.help_dialog = QDialog()
         self.help_dialog.setMinimumSize(500,500)
@@ -112,7 +114,8 @@ class GTAVController:
 
     def load_file_dialog(self):
         self.load_file_dialog = QFileDialog()
-        file_path, _ = self.load_file_dialog.getOpenFileName(self.load_file_dialog, "Load Peds META or XML File", '','XML, META Files (*.meta *.xml)')
+        file_path, _ = self.load_file_dialog.getOpenFileName(self.view, "Load Peds META or XML File", './database','XML, META Files (*.meta *.xml)', ''
+                                                             )
         self.view.set_ped_file_path(file_path)
 
 
@@ -121,22 +124,18 @@ class GTAVController:
         Update path_line_edit field with valid peds meta or xml file 
         QTreeView.doubleclicked event passes QModelIndex object as a parameter
         """
-        # Need a temp QFileSystemModel as filePath() method is accessible from that class and NOT QModelIndex class
-        temp_model = QFileSystemModel()
-        valid_file_types = ['xml File', 'meta File']
 
-        # Get the filepath - index = QModelIndex object
-        file_path = temp_model.filePath(index)
+        # Get the filepath - index = QModelIndex object -> model() return QFileSystemModel object
+        file_path = index.model().filePath(index)
 
         # Returns a string displaying type of file
-        file_type = temp_model.type(index)
+        file_type = index.model().type(index)
         
         # Determine if it is a file not directory
         # fileInfo returns a QFileInfo object
-        file_isFile = temp_model.fileInfo(index).isFile()
+        file_isFile = index.model().fileInfo(index).isFile()
         
-        if file_isFile and file_type in valid_file_types:
-            self.view.set_ped_file_path(file_path)
+        self.view.set_ped_file_path(file_path)
     
 
     def load_ped_db(self):
@@ -163,7 +162,8 @@ class GTAVController:
 
             # Generate the attribute options with the ped list
             self.attr_db = ped_xml_funcs.attr_db(self.ped_list)
-            QMessageBox.information(QWidget(), 'SUCCESS','Ped DB Loaded!\nChoose a ped template to get started.')
+            #QMessageBox.information(QWidget(), 'SUCCESS','Ped DB Loaded!\nChoose a ped template to get started.')
+            self.view.statusBar().showMessage('Success! Ped DB Loaded! Choose a ped template to get started!', 0)
 
     def pick_ped_template(self):
         """
@@ -208,8 +208,16 @@ class GTAVController:
         custom_ped, err_mess = ped_xml_funcs.generate_new_ped(self.cur_ped, new_val_dict)
 
         if not err_mess:
-            ped_xml_funcs.ped_xml_writer(custom_ped)
+            save_path = '.'
+
+            save_dialog = QFileDialog(self.view)
+            save_path = save_dialog.getExistingDirectory(self.view, 'Save Location', '.', QFileDialog.DontUseNativeDialog)
+            if save_path == '':
+                save_path = '.'
+            ped_xml_funcs.ped_xml_writer(custom_ped, save_path)
+
             QMessageBox.information(QWidget(), 'SUCCESS', 'SUCCESS:\nCheck peds.meta file for the custom ped!')
+            self.view.statusBar().showMessage(f'Success! Your custom ped has been written to {save_path}/peds.meta')
         else:
             self.view.error_dialogs(err_message, 'ERROR:\nCustom ped generation failed! Try again.')
 
@@ -217,8 +225,7 @@ class GTAVController:
 class GTAVMainWindow(QMainWindow):
     """Main GUI"""
 
-    def __init__(self):
-
+    def __init__(self, q_settings_file):
         super().__init__()
 
         # Main window settings
@@ -247,7 +254,9 @@ class GTAVMainWindow(QMainWindow):
         # Create gui elements
         # Create the directory view first and add to main layout
         self.create_dir_view()
-        #self.main_layout.addLayout(self.dir_layout)
+        if q_settings_file:
+            self.restore_dir_view()
+
 
         # App Layout
         self.app_layout = QVBoxLayout()
@@ -264,6 +273,30 @@ class GTAVMainWindow(QMainWindow):
         self.q_split.addWidget(self.app_widget)
         
         self.main_layout.addWidget(self.q_split)
+
+
+    def save_dir_view(self):
+        q_settings = QSettings('settings.ini', QSettings.IniFormat)
+        q_settings.setValue('expanded_item', self.model.filePath(self.tree.currentIndex()))
+
+
+    def restore_dir_view(self):
+        q_settings = QSettings('settings.ini', QSettings.IniFormat)
+        expand_file = q_settings.value("expanded_item")
+        model_index = self.model.index(expand_file)
+        self.tree.setCurrentIndex(model_index)
+        self.tree.setExpanded(model_index, True)
+
+
+    def closeEvent(self, event):
+        close = QMessageBox.question(self, "QUIT", "Do you really want to quit the application?", QMessageBox.Yes | QMessageBox.Cancel, defaultButton = QMessageBox.Cancel)
+
+        if close == QMessageBox.Yes:
+            self.save_dir_view()
+            event.accept()
+        else:
+            event.ignore()
+
 
     def create_menu_bar(self):
         # Create a menubar
@@ -526,8 +559,16 @@ def main():
     
     app.setFont(QFont('Arial', 11))
 
+    q_settings = False
+
+    try:
+        with open('settings.ini', 'r') as file:
+            q_settings = True
+    except:
+        pass
+
     # Main UI
-    main_ui = GTAVMainWindow()
+    main_ui = GTAVMainWindow(q_settings)
     main_ui.show()
 
     # Controller

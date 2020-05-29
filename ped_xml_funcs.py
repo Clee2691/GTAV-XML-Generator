@@ -139,7 +139,7 @@ def attr_db(peds_list):
     return ped_attrib_db
 
 
-def ped_xml_writer(new_ped):
+def ped_xml_writer(new_ped, save_path):
     """
     Writes the custom ped to peds.meta file. If no file is present, will create one first.
     If no custom ped is passed, this function does nothing.
@@ -149,8 +149,8 @@ def ped_xml_writer(new_ped):
     Output -> Either new peds.meta file or append custom ped to peds.meta
     """
 
-    ped_meta_path = Path('ped_xml_files/peds.meta')
-    ped_xml_path = Path('ped_xml_files/peds.xml')
+    ped_meta_path = Path(save_path + '/peds.meta')
+    ped_xml_path = Path(save_path + '/peds.xml')
     
     if ped_meta_path.exists():
         ped_meta_path.rename(ped_meta_path.with_suffix('.xml'))
