@@ -5,6 +5,8 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
+APP_VERSION = 1.0
+
 
 class GTAVController:
     """ 
@@ -87,10 +89,10 @@ class GTAVController:
         self.about_dialog.setWindowTitle("ABOUT GTA V XML CREATOR")
         self.about_dialog.setSizeGripEnabled(True)
 
-        about_text = """ 
+        about_text = f""" 
         <html> 
         <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
-        <h1 align="center">GTA V Addon XML Creator V1.0</h1>
+        <h1 align="center">GTA V Addon XML Creator V{APP_VERSION}</h1>
         <h3 align="center"> Author: Steeldrgn \u00A92020</h3>
         </body>
         </html>
@@ -246,7 +248,7 @@ class GTAVMainWindow(QMainWindow):
         super().__init__()
 
         # Main window settings
-        self.setWindowTitle("GTA V Addon XML Creator V1.0")
+        self.setWindowTitle(f"GTA V Addon XML Creator V{APP_VERSION}")
         # setGeometry(x-pos, y-pos, width, height)
         self.setGeometry(800, 200, 715, 500)
 
@@ -358,7 +360,7 @@ class GTAVMainWindow(QMainWindow):
         self.title_layout = QVBoxLayout()
 
         # Labels
-        self.title_label = QLabel("GTA V Addon XML Creator V1.0")
+        self.title_label = QLabel(f"GTA V Addon XML Creator V{APP_VERSION}")
         self.title_label.setFixedHeight(25)
         self.title_label.setAlignment(Qt.AlignCenter)
         self.title_label.setFont(QFont("pricedown", 20))
