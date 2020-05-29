@@ -17,7 +17,7 @@ class Ped:
     def __init__(self, ped_dictionary):
         for k, v in ped_dictionary.items():
             setattr(self, k, v)
-        #print('New ped created!')
+        # print('New ped created!')
 
     def return_att_dict(self):
         return self.__dict__
@@ -25,17 +25,17 @@ class Ped:
     def display_attributes(self):
         counter = 1
         for attr, val in self.__dict__.items():
-            print(f'{counter}. Attribute: {attr} | Value: {val}')
+            print(f"{counter}. Attribute: {attr} | Value: {val}")
             counter += 1
         return
 
     def update_attr(self, new_val_dict):
         for k, v in new_val_dict.items():
             setattr(self, k, v)
-        return print('Attributes updated!')
+        return print("Attributes updated!")
 
     def __repr__(self):
-        return f'Name: {self.Name}'
+        return f"Name: {self.Name}"
 
 
 def ped_generator(xml_file):
@@ -50,15 +50,14 @@ def ped_generator(xml_file):
     list_of_peds = []
     err_message = None
 
-
     try:
         ped_parsed = ET.parse(xml_file)
         ped_root = ped_parsed.getroot()
 
-        if ped_root.tag == 'CPedModelInfo__InitDataList':
+        if ped_root.tag == "CPedModelInfo__InitDataList":
 
             # I just wanted the items in InitDatas
-            ped_data = ped_root.findall('./InitDatas/Item')
+            ped_data = ped_root.findall("./InitDatas/Item")
 
             for ped_element in ped_data:
                 ped_dictionary = {}
@@ -80,19 +79,21 @@ def ped_generator(xml_file):
 
                 list_of_peds.append(Ped(ped_dictionary))
 
-            print('Ped database populated! Choose a ped template to start the ped creation process!')
+            print(
+                "Ped database populated! Choose a ped template to start the ped creation process!"
+            )
 
             return list_of_peds, err_message
         else:
-            err_message = 'NOT VALID PEDS FILE'
+            err_message = "NOT VALID PEDS FILE"
             return None, err_message
 
     except FileNotFoundError:
-        err_message = 'FILE NOT FOUND'
+        err_message = "FILE NOT FOUND"
         return None, err_message
 
 
-def generate_new_ped(ped_template = None, new_val_dict = None):
+def generate_new_ped(ped_template=None, new_val_dict=None):
 
     """
     Create a new custom ped with values specified by a dictionary
@@ -105,7 +106,7 @@ def generate_new_ped(ped_template = None, new_val_dict = None):
     error_mess = None
 
     if new_val_dict == None:
-        error_mess='GENERATE FAILED'
+        error_mess = "GENERATE FAILED"
         return error_mess
     else:
         # Deepcopy so I don't override the template ped
@@ -149,29 +150,29 @@ def ped_xml_writer(new_ped, save_path):
     Output -> Either new peds.meta file or append custom ped to peds.meta
     """
 
-    ped_meta_path = Path(save_path + '/peds.meta')
-    ped_xml_path = Path(save_path + '/peds.xml')
-    
+    ped_meta_path = Path(save_path + "/peds.meta")
+    ped_xml_path = Path(save_path + "/peds.xml")
+
     if ped_meta_path.exists():
-        ped_meta_path.rename(ped_meta_path.with_suffix('.xml'))
+        ped_meta_path.rename(ped_meta_path.with_suffix(".xml"))
         ped_tree = ET.ElementTree(file=ped_xml_path)
 
         # InitDatas is the root for all ped items
-        ped_data_root = ped_tree.getroot().find('InitDatas')
-    
+        ped_data_root = ped_tree.getroot().find("InitDatas")
+
     else:
-        ped_xml_root = ET.Element('CPedModelInfo__InitDataList')
-        ped_data_root = ET.SubElement(ped_xml_root, 'InitDatas')
-        ped_tree=ET.ElementTree(ped_xml_root)
-        
-    ped_item = ET.SubElement(ped_data_root, 'Item')
+        ped_xml_root = ET.Element("CPedModelInfo__InitDataList")
+        ped_data_root = ET.SubElement(ped_xml_root, "InitDatas")
+        ped_tree = ET.ElementTree(ped_xml_root)
+
+    ped_item = ET.SubElement(ped_data_root, "Item")
 
     for attr, val in new_ped.return_att_dict().items():
         # List datatype specifies parameter has more child elements
         if isinstance(val, list):
             item1_subset = ET.SubElement(ped_item, attr)
             for subitem in val:
-                ET.SubElement(item1_subset, 'Item').text = subitem
+                ET.SubElement(item1_subset, "Item").text = subitem
         # Dictionary datatype specifies element only attributes
         elif isinstance(val, dict):
             ET.SubElement(ped_item, attr, val)
@@ -179,9 +180,11 @@ def ped_xml_writer(new_ped, save_path):
         else:
             ET.SubElement(ped_item, attr).text = val
     try:
-        ped_tree.write(ped_xml_path, encoding='utf-8', xml_declaration=True, method='xml')
+        ped_tree.write(
+            ped_xml_path, encoding="utf-8", xml_declaration=True, method="xml"
+        )
 
-        ped_xml_path.rename(ped_xml_path.with_suffix('.meta'))
+        ped_xml_path.rename(ped_xml_path.with_suffix(".meta"))
     except:
         return
-    
+
