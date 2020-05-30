@@ -312,13 +312,16 @@ class GTAVMainWindow(QMainWindow):
             defaultButton=QMessageBox.Cancel,
         )
 
-        if close == QMessageBox.Yes:
+        if event == False and close == QMessageBox.Yes:
+            self.save_dir_view()
+            qApp.quit()
+        elif event == False and close == QMessageBox.Cancel:
+            pass
+        elif close == QMessageBox.Yes:
             self.save_dir_view()
             event.accept()
-            return True
-        else:
+        elif close == QMessageBox.Cancel:
             event.ignore()
-            return False
 
     def create_menu_bar(self):
         # Create a menubar
