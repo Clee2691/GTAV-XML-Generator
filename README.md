@@ -10,13 +10,18 @@ Now there is no need to copy, paste, and change individual files for every addon
 
 <sub>1 - :x: NOT CURRENTLY AVAILABLE. See planned features below.</sub>
 
+![app_ss](readme_imgs/XML_CreatorV1_edit.PNG)
 
 ### Current Features V1.0
+
 :white_check_mark: :memo: Generate `peds.meta` file automatically
+
   - Automatically adds your custom ped to an existing `peds.meta` file if you have one already.
+
   - `Meta` file is human readable (*pretty printed*)!
 
 :white_check_mark: Use an existing ped template for quick `meta` file generation
+
   - Tweak what you want, how you want quickly.
 
 :white_check_mark: Shows all possible native entries for each ped parameter
@@ -24,13 +29,15 @@ Now there is no need to copy, paste, and change individual files for every addon
 :white_check_mark: Full graphical user interface
 
 :white_check_mark:  :pushpin: Persistent directory tree
+
   - Last file used will show up again in the directory tree! Avoid having to expand and collapse the tree manually at every startup!
   
 ## Planned Features
+
 :white_large_square: Add logging support for issues.
 
 :white_large_square: Generate addon `weapons.meta` file and all associated weapon files.
- 
+
 :white_large_square: Generate addon `vehicles.meta` file and all associated vehicle files.
 
 :white_large_square: Ability to add custom tags/ add more tags for a parameter set (eg. `MovementClipSets` in `peds.meta`).
@@ -38,6 +45,7 @@ Now there is no need to copy, paste, and change individual files for every addon
 :white_large_square: Smarter parameter value searches along with specific parameter search.
 
 ## How To Use
+
 1. **Load Database**
    - Double click the `peds.ymt.xml` file located in the `database` folder from the left directory tree. 
      - Use the directory tree on the left or the menu bar.
@@ -60,4 +68,5 @@ Now there is no need to copy, paste, and change individual files for every addon
    - Enjoy your addons!
 
 ## Change Log
+
 V1.0 - Initial release. Addon peds support with GUI.
