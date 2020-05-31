@@ -3,6 +3,8 @@ import os, os.path
 import copy
 from pathlib import Path
 
+import lxml.etree as LET
+
 
 class Ped:
 
@@ -31,7 +33,10 @@ class Ped:
 
     def update_attr(self, new_val_dict):
         for k, v in new_val_dict.items():
-            setattr(self, k, v)
+            if isinstance(getattr(self, k), dict):
+                setattr(self, k, {'value': v})
+            else:
+                setattr(self, k, v)
         return print("Attributes updated!")
 
     def __repr__(self):
@@ -51,7 +56,7 @@ def ped_generator(xml_file):
     err_message = None
 
     try:
-        ped_parsed = ET.parse(xml_file)
+        ped_parsed = LET.parse(xml_file)
         ped_root = ped_parsed.getroot()
 
         if ped_root.tag == "CPedModelInfo__InitDataList":
@@ -66,7 +71,7 @@ def ped_generator(xml_file):
                     if len(param) > 0:
                         ped_dictionary[param.tag] = []
                         for item in param:
-                            ped_dictionary[param.tag].append(item.text)
+                            ped_dictionary[param.tag].append(item)
                     # Only has attribute with 'value'; Usually does not contain text as well
                     elif param.attrib:
                         ped_dictionary[param.tag] = param.attrib
@@ -92,6 +97,33 @@ def ped_generator(xml_file):
         err_message = "FILE NOT FOUND"
         return None, err_message
 
+def attr_db(peds_list):
+    """
+    Gather possible entries for each ped attribute through peds.meta file
+    Only need to run it once.
+
+    69/71 entries have options
+
+    """
+    ped_attrib_db = {}
+
+    for ped in peds_list:
+        for k, v in ped.return_att_dict().items():
+            if v == None:
+                continue
+            elif isinstance(v, LET._Attrib):
+                ped_attrib_db[k] = v
+            elif (k not in ped_attrib_db) and isinstance(v, list):
+                ped_attrib_db[k] = {child.text for child in v}
+            elif k not in ped_attrib_db:
+                ped_attrib_db[k] = {v}
+            elif k in ped_attrib_db and isinstance(v, list):
+                for child in v:
+                    ped_attrib_db[k].add(child.text)
+            else:
+                ped_attrib_db[k].add(v)    
+
+    return ped_attrib_db
 
 def generate_new_ped(ped_template=None, new_val_dict=None):
 
@@ -115,31 +147,6 @@ def generate_new_ped(ped_template=None, new_val_dict=None):
 
         return new_ped, error_mess
 
-
-def attr_db(peds_list):
-    """
-    Gather possible entries for each ped attribute through peds.meta file
-    Only need to run it once.
-
-    69/71 entries have options
-
-    """
-    ped_attrib_db = {}
-
-    for ped in peds_list:
-        for k, v in ped.return_att_dict().items():
-            if v == None:
-                continue
-            elif isinstance(v, dict) or isinstance(v, list):
-                ped_attrib_db[k] = v
-            elif k not in ped_attrib_db:
-                ped_attrib_db[k] = {v}
-            else:
-                ped_attrib_db[k].add(v)
-
-    return ped_attrib_db
-
-
 def ped_xml_writer(new_ped, save_path):
     """
     Writes the custom ped to peds.meta file. If no file is present, will create one first.
@@ -151,40 +158,42 @@ def ped_xml_writer(new_ped, save_path):
     """
 
     ped_meta_path = Path(save_path + "/peds.meta")
-    ped_xml_path = Path(save_path + "/peds.xml")
 
     if ped_meta_path.exists():
-        ped_meta_path.rename(ped_meta_path.with_suffix(".xml"))
-        ped_tree = ET.ElementTree(file=ped_xml_path)
+        # Need parser to reset formating of existing file
+        xml_parser = LET.XMLParser(remove_blank_text=True)
+        ped_tree = LET.ElementTree(file=str(ped_meta_path), parser=xml_parser)
 
         # InitDatas is the root for all ped items
         ped_data_root = ped_tree.getroot().find("InitDatas")
 
     else:
-        ped_xml_root = ET.Element("CPedModelInfo__InitDataList")
-        ped_data_root = ET.SubElement(ped_xml_root, "InitDatas")
-        ped_tree = ET.ElementTree(ped_xml_root)
+        ped_xml_root = LET.Element("CPedModelInfo__InitDataList")
+        ped_data_root = LET.SubElement(ped_xml_root, "InitDatas")
+        ped_tree = LET.ElementTree(ped_xml_root)
 
-    ped_item = ET.SubElement(ped_data_root, "Item")
+    ped_item = LET.SubElement(ped_data_root, "Item")
 
     for attr, val in new_ped.return_att_dict().items():
         # List datatype specifies parameter has more child elements
-        if isinstance(val, list):
-            item1_subset = ET.SubElement(ped_item, attr)
+        if val == '':
+            LET.SubElement(ped_item, attr)
+
+        elif isinstance(val, list):
+            item1_subset = LET.SubElement(ped_item, attr)
             for subitem in val:
-                ET.SubElement(item1_subset, "Item").text = subitem
+                LET.SubElement(item1_subset, "Item").text = subitem
+
         # Dictionary datatype specifies element only attributes
         elif isinstance(val, dict):
-            ET.SubElement(ped_item, attr, val)
+            LET.SubElement(ped_item, attr, val)
+
         # Everything else should have text only
         else:
-            ET.SubElement(ped_item, attr).text = val
-    try:
-        ped_tree.write(
-            ped_xml_path, encoding="utf-8", xml_declaration=True, method="xml"
-        )
+            LET.SubElement(ped_item, attr).text = val
 
-        ped_xml_path.rename(ped_xml_path.with_suffix(".meta"))
-    except:
-        return
+    ped_tree.write(
+        str(ped_meta_path), encoding="utf-8", xml_declaration=True, pretty_print=True
+    )
+
 

@@ -5,8 +5,9 @@ from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
 from PyQt5.QtGui import *
 
-APP_VERSION = 1.0
+import lxml.etree as LET
 
+APP_VERSION = 1.0
 
 class GTAVController:
     """ 
@@ -209,8 +210,16 @@ class GTAVController:
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
 
-            elif isinstance(row_param_widget, QComboBox):
-                new_val_dict[row_label] = row_param_widget.currentText()
+            elif isinstance(row_param_widget, QComboBox) or isinstance(row_param_widget, QLabel):
+                # Added children to XML tag if it has any
+                # Manual adding of HasChildren and Item in label generation
+                cur_label = row_label.split(' ')[0]
+                if "HasChildren" in row_label:
+                    new_val_dict[cur_label] = []
+                elif "Item" in row_label:
+                    new_val_dict[cur_label].append(row_param_widget.currentText())
+                else:
+                    new_val_dict[row_label] = row_param_widget.currentText()
 
         custom_ped, err_mess = ped_xml_funcs.generate_new_ped(
             self.cur_ped, new_val_dict
@@ -475,10 +484,23 @@ class GTAVMainWindow(QMainWindow):
             # Allow editing of name
             if k == "Name":
                 self.form_layout.addRow(QLabel(k), QLineEdit(v))
-
+            elif v == None:
+                self.form_layout.addRow(QLabel(k), QLineEdit())
             elif isinstance(v, list):
-                pass
-            elif isinstance(v, dict):
+                param_label = QLabel(f'{k} HasChildren')
+                param_label2 = QLabel('See Items Below:')
+                self.form_layout.addRow(param_label, param_label2)
+
+                for item in v:
+                    param_label = QLabel(f'{k} Item')
+                    param_cbox = QComboBox()
+                    param_cbox.addItem(item.text)
+                    param_cbox.setEditable(True)
+                    param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
+                    param_cbox.setCurrentText(item.text)
+                    self.form_layout.addRow(param_label, param_cbox)
+
+            elif isinstance(v, LET._Attrib):
                 param_label = QLabel(k)
                 param_edit_line = QLineEdit(v["value"])
 
