@@ -34,7 +34,7 @@ class Ped:
     def update_attr(self, new_val_dict):
         for k, v in new_val_dict.items():
             if isinstance(getattr(self, k), dict):
-                setattr(self, k, {'value': v})
+                setattr(self, k, {"value": v})
             else:
                 setattr(self, k, v)
         return print("Attributes updated!")
@@ -97,6 +97,7 @@ def ped_generator(xml_file):
         err_message = "FILE NOT FOUND"
         return None, err_message
 
+
 def attr_db(peds_list):
     """
     Gather possible entries for each ped attribute through peds.meta file
@@ -121,9 +122,10 @@ def attr_db(peds_list):
                 for child in v:
                     ped_attrib_db[k].add(child.text)
             else:
-                ped_attrib_db[k].add(v)    
+                ped_attrib_db[k].add(v)
 
     return ped_attrib_db
+
 
 def generate_new_ped(ped_template=None, new_val_dict=None):
 
@@ -146,6 +148,7 @@ def generate_new_ped(ped_template=None, new_val_dict=None):
         new_ped.update_attr(new_val_dict)
 
         return new_ped, error_mess
+
 
 def ped_xml_writer(new_ped, save_path):
     """
@@ -176,7 +179,7 @@ def ped_xml_writer(new_ped, save_path):
 
     for attr, val in new_ped.return_att_dict().items():
         # List datatype specifies parameter has more child elements
-        if val == '':
+        if val == "":
             LET.SubElement(ped_item, attr)
 
         elif isinstance(val, list):
@@ -195,5 +198,4 @@ def ped_xml_writer(new_ped, save_path):
     ped_tree.write(
         str(ped_meta_path), encoding="utf-8", xml_declaration=True, pretty_print=True
     )
-
 

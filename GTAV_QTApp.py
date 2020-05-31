@@ -9,6 +9,7 @@ import lxml.etree as LET
 
 APP_VERSION = 1.0
 
+
 class GTAVController:
     """ 
     Controller class for GUI
@@ -210,10 +211,12 @@ class GTAVController:
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
 
-            elif isinstance(row_param_widget, QComboBox) or isinstance(row_param_widget, QLabel):
+            elif isinstance(row_param_widget, QComboBox) or isinstance(
+                row_param_widget, QLabel
+            ):
                 # Added children to XML tag if it has any
                 # Manual adding of HasChildren and Item in label generation
-                cur_label = row_label.split(' ')[0]
+                cur_label = row_label.split(" ")[0]
                 if "HasChildren" in row_label:
                     new_val_dict[cur_label] = []
                 elif "Item" in row_label:
@@ -487,12 +490,12 @@ class GTAVMainWindow(QMainWindow):
             elif v == None:
                 self.form_layout.addRow(QLabel(k), QLineEdit())
             elif isinstance(v, list):
-                param_label = QLabel(f'{k} HasChildren')
-                param_label2 = QLabel('See Items Below:')
+                param_label = QLabel(f"{k} HasChildren")
+                param_label2 = QLabel("See Items Below:")
                 self.form_layout.addRow(param_label, param_label2)
 
                 for item in v:
-                    param_label = QLabel(f'{k} Item')
+                    param_label = QLabel(f"{k} Item")
                     param_cbox = QComboBox()
                     param_cbox.addItem(item.text)
                     param_cbox.setEditable(True)
