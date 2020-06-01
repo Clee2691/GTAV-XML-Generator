@@ -10,6 +10,8 @@ Now there is no need to copy, paste, and change individual files for every addon
 
 <sub>1 - :x: NOT CURRENTLY AVAILABLE. See planned features below.</sub>
 
+### :package: Check releases sections for the latest built binaries!
+
 ![app_ss](readme_imgs/XML_CreatorV1_edit.PNG)
 
 ### Current Features V1.0
@@ -32,7 +34,7 @@ Now there is no need to copy, paste, and change individual files for every addon
 
   - Last file used will show up again in the directory tree! Avoid having to expand and collapse the tree manually at every startup!
   
-## Planned Features
+## :hourglass: Planned Features
 
 :white_large_square: Add logging support for issues.
 
@@ -43,6 +45,18 @@ Now there is no need to copy, paste, and change individual files for every addon
 :white_large_square: Ability to add custom tags/ add more tags for a parameter set (eg. `MovementClipSets` in `peds.meta`).
 
 :white_large_square: Smarter parameter value searches along with specific parameter search.
+
+## How To Run
+
+**Application coded with `python 3.7.4`**
+
+1. ```git clone```
+
+### Required Dependencies
+
+1. ```pip install PyQt5```
+2. ```pip install lxml```
+3. Run `GTAV_QTApp.py`
 
 ## How To Use
 
