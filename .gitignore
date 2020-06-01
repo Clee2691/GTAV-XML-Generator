@@ -1,8 +1,12 @@
 /venv
 /__pycache__
+*/__pycache__
 /.vscode
 /ped_xml_files
 /METAOut
+/Binarybuilds
+/Misc
+/weapon_xml_files
 
 playground.ipynb
 playground2.ipynb
