@@ -1,5 +1,4 @@
-import functions.ped_xml_funcs
-import functions.weapons_xml_funcs
+from functions import ped_xml_funcs, weapons_xml_funcs
 import sys
 
 from PyQt5.QtWidgets import *
