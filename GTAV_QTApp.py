@@ -24,7 +24,7 @@ class GTAVController:
 
     def conn_btn_signals(self):
         self.view.path_btn.clicked.connect(self.load_ped_db)
-        self.view.template_load_btn.clicked.connect(self.pick_ped_template)
+        self.view.template_load_btn.clicked.connect(self.pick_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
 
         self.view.tree.doubleClicked.connect(self.dir_view_select)
@@ -174,7 +174,7 @@ class GTAVController:
                 "Success! Ped DB Loaded! Choose a ped template to get started!", 0
             )
 
-    def pick_ped_template(self):
+    def pick_template(self):
         """
         Show params for the picked ped
         """
@@ -263,7 +263,7 @@ class GTAVController:
         dialog_layout = QVBoxLayout()
 
         rename_label = QLabel("Enter name for the tab:")
-        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(":")[-1])
+        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(':')[-1])
         rename_button_group = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         )
@@ -279,9 +279,13 @@ class GTAVController:
         tab_rename_dialog.exec_()
 
         if QDialog.accepted:
-            new_name = f"PEDS: {rename_edit.text()}"
-            self.view.tab_area.setTabText(index, new_name)
-
+            # [PED, PEDPERS, WEAP, WEAPARCH, WEAPANIM, WEAPCOMP, LOAD, PICKUP]
+            if self.view.tab_area.tabText(index).split(':')[0] == 'PED':
+                new_name = f'PED:{rename_edit.text()}'
+                self.view.tab_area.setTabText(index, new_name)
+            else:
+                new_name = f'{rename_edit.text()}'
+                self.view.tab_area.setTabText(index, new_name)
 
 class GTAVMainWindow(QMainWindow):
     """Main GUI"""
