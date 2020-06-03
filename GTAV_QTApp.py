@@ -29,6 +29,7 @@ class GTAVController:
 
         self.view.tree.doubleClicked.connect(self.dir_view_select)
         self.view.tab_area.tabCloseRequested.connect(self.close_tab)
+        self.view.tab_area.tabBarDoubleClicked.connect(self.tab_rename)
 
     # Menu actions
     def create_menu_actions(self):
@@ -163,7 +164,7 @@ class GTAVController:
         if self.err_mess:
             self.view.error_dialogs(self.err_mess)
         else:
-            self.view.populate_ped_cbox(self.ped_list)
+            self.view.populate_cbox(self.ped_list)
             self.view.template_load_btn.setDisabled(False)
 
             # Generate the attribute options with the ped list
@@ -255,6 +256,31 @@ class GTAVController:
 
     def close_tab(self, index):
         self.view.tab_area.removeTab(index)
+
+    def tab_rename(self, index):
+        tab_rename_dialog = QDialog(self.view)
+        tab_rename_dialog.setWindowTitle("Rename Tab")
+        dialog_layout = QVBoxLayout()
+
+        rename_label = QLabel("Enter name for the tab:")
+        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(":")[-1])
+        rename_button_group = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+
+        dialog_layout.addWidget(rename_label)
+        dialog_layout.addWidget(rename_edit)
+        dialog_layout.addWidget(rename_button_group)
+
+        tab_rename_dialog.setLayout(dialog_layout)
+        rename_button_group.accepted.connect(tab_rename_dialog.accept)
+        rename_button_group.rejected.connect(tab_rename_dialog.reject)
+
+        tab_rename_dialog.exec_()
+
+        if QDialog.accepted:
+            new_name = f"PEDS: {rename_edit.text()}"
+            self.view.tab_area.setTabText(index, new_name)
 
 
 class GTAVMainWindow(QMainWindow):
@@ -387,7 +413,7 @@ class GTAVMainWindow(QMainWindow):
         try:
             self.title_label.setFont(QFont("pricedown", 20))
         except:
-            self.title_label.setFont(QFont('Arial', 20))
+            self.title_label.setFont(QFont("Arial", 20))
         self.author_label = QLabel("By: Steeldrgn")
         self.author_label.setFixedHeight(30)
         self.author_label.setAlignment(Qt.AlignCenter)
@@ -395,7 +421,6 @@ class GTAVMainWindow(QMainWindow):
             self.author_label.setFont(QFont("pricedown", 20))
         except:
             self.author_label.setFont(QFont("Arial", 20))
-        
 
         # Add labels to layout
         self.title_layout.addWidget(self.title_label)
@@ -465,13 +490,13 @@ class GTAVMainWindow(QMainWindow):
 
         self.app_layout.addWidget(self.generate_btn)
 
-    def populate_ped_cbox(self, ped_list):
+    def populate_cbox(self, object_list):
         """
         Add all ped objects to the combo box
         Connects the load peds file button
         """
-        for ped in ped_list:
-            self.template_cbox.addItem(ped.Name)
+        for item in object_list:
+            self.template_cbox.addItem(item.Name)
 
         if self.template_cbox.count() > 1:
             self.template_cbox.setDisabled(False)
@@ -530,7 +555,7 @@ class GTAVMainWindow(QMainWindow):
                     param_edit_line = QLineEdit(v)
                     scroll_form_layout.addRow(param_label, param_edit_line)
 
-        self.tab_area.addTab(scroll_area, f'PED: {cur_ped_template.Name}')
+        self.tab_area.addTab(scroll_area, f"PED: {cur_ped_template.Name}")
         self.generate_btn.setDisabled(False)
 
     def error_dialogs(self, error, other_message=None):
@@ -560,24 +585,10 @@ class GTAVMainWindow(QMainWindow):
         elif error == "GENERATE FAILED":
             QMessageBox(self, error, other_message)
 
-    def remove_params(self):
-        """ 
-        Clear out rows in form layout before repopulating
-        """
-
-        form_items = self.form_layout.rowCount()
-
-        if form_items == 0:
-            return
-        else:
-            for item in reversed(range(form_items)):
-                self.form_layout.removeRow(item)
-
     def clear_combo_box(self):
         if self.template_cbox.count() > 1:
             self.template_cbox.clear()
-            self.remove_params()
-            self.template_cbox.addItem("-----Choose A Ped-----")
+            self.template_cbox.addItem("-----Choose A Template-----")
             self.template_cbox.setCurrentIndex(0)
 
     def get_ped_path_text(self):
