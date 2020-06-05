@@ -10,7 +10,7 @@ Now there is no need to copy, paste, and change individual files for every addon
 
 <sub>1 - :x: NOT CURRENTLY AVAILABLE. See planned features below.</sub>
 
-### :package: Check releases sections for the latest built binaries!
+### :package: Check `Release` section for the latest built binaries!
 
 ![app_ss](readme_imgs/XML_CreatorV1_edit.PNG)
 
