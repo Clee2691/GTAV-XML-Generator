@@ -1,4 +1,4 @@
-from functions import ped_xml_funcs, weapons_xml_funcs
+from functions import xml_parse
 import sys
 
 from PyQt5.QtWidgets import *
@@ -156,7 +156,7 @@ class GTAVController:
             return
 
         # Load the ped database and any error messages
-        self.ped_list, self.err_mess = ped_xml_funcs.ped_generator(xml_path)
+        self.ped_list, self.err_mess = xml_parse.xml_meta_parser(xml_path)
 
         # Creates error dialog boxes if there are errors
         if self.err_mess:
@@ -166,7 +166,7 @@ class GTAVController:
             self.view.template_load_btn.setDisabled(False)
 
             # Generate the attribute options with the ped list
-            self.attr_db = ped_xml_funcs.attr_db(self.ped_list)
+            self.attr_db = xml_parse.attr_db(self.ped_list)
             # QMessageBox.information(QWidget(), 'SUCCESS','Ped DB Loaded!\nChoose a ped template to get started.')
             self.view.statusBar().showMessage(
                 "Success! Ped DB Loaded! Choose a ped template to get started!", 0
@@ -224,7 +224,7 @@ class GTAVController:
                 else:
                     new_val_dict[row_label] = row_param_widget.currentText()
 
-        custom_ped, err_mess = ped_xml_funcs.generate_new_ped(
+        custom_ped, err_mess = xml_parse.generate_new_object(
             self.cur_ped, new_val_dict
         )
 
@@ -237,7 +237,7 @@ class GTAVController:
             )
             if save_path == "":
                 save_path = "."
-            ped_xml_funcs.ped_xml_writer(custom_ped, save_path)
+            xml_parse.xml_writer(custom_ped, save_path)
 
             QMessageBox.information(
                 QWidget(),
