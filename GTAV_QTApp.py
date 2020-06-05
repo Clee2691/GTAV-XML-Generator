@@ -256,7 +256,7 @@ class GTAVController:
         dialog_layout = QVBoxLayout()
 
         rename_label = QLabel("Enter name for the tab:")
-        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(':')[-1])
+        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(":")[-1])
         rename_button_group = QDialogButtonBox(
             QDialogButtonBox.Ok | QDialogButtonBox.Cancel
         )
@@ -273,12 +273,13 @@ class GTAVController:
 
         if QDialog.accepted:
             # [PED, PEDPERS, WEAP, WEAPARCH, WEAPANIM, WEAPCOMP, LOAD, PICKUP]
-            if self.view.tab_area.tabText(index).split(':')[0] == 'PED':
-                new_name = f'PED:{rename_edit.text()}'
+            if self.view.tab_area.tabText(index).split(":")[0] == "PED":
+                new_name = f"PED:{rename_edit.text()}"
                 self.view.tab_area.setTabText(index, new_name)
             else:
-                new_name = f'{rename_edit.text()}'
+                new_name = f"{rename_edit.text()}"
                 self.view.tab_area.setTabText(index, new_name)
+
 
 class GTAVMainWindow(QMainWindow):
     """Main GUI"""
@@ -626,11 +627,11 @@ def main():
         # Add font to a font family
         pd_font_fam = font_db.applicationFontFamilies(font_id)
         pricedown = QFont(pd_font_fam[0])
-
-        app.setFont(QFont("Arial", 11))
     except:
-        pass
+        print("Pricedown font not found, falling back to Arial")
 
+    # Set all other text to Arial size 11
+    app.setFont(QFont("Arial", 11))
     q_settings = False
 
     try:
