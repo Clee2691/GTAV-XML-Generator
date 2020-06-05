@@ -24,10 +24,12 @@ class GTAVController:
 
     def conn_btn_signals(self):
         self.view.path_btn.clicked.connect(self.load_ped_db)
-        self.view.template_load_btn.clicked.connect(self.pick_ped_template)
+        self.view.template_load_btn.clicked.connect(self.pick_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
 
         self.view.tree.doubleClicked.connect(self.dir_view_select)
+        self.view.tab_area.tabCloseRequested.connect(self.close_tab)
+        self.view.tab_area.tabBarDoubleClicked.connect(self.tab_rename)
 
     # Menu actions
     def create_menu_actions(self):
@@ -88,13 +90,13 @@ class GTAVController:
 
     def about_dialog(self):
         self.about_dialog = QDialog()
-        self.about_dialog.setWindowTitle("ABOUT GTA V XML CREATOR")
+        self.about_dialog.setWindowTitle("ABOUT GTA V META CREATOR")
         self.about_dialog.setSizeGripEnabled(True)
 
         about_text = f""" 
         <html> 
         <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
-        <h1 align="center">GTA V Addon XML Creator V{APP_VERSION}</h1>
+        <h1 align="center">GTA V Addon META Creator V{APP_VERSION}</h1>
         <h3 align="center"> Author: Steeldrgn \u00A92020</h3>
         </body>
         </html>
@@ -162,7 +164,7 @@ class GTAVController:
         if self.err_mess:
             self.view.error_dialogs(self.err_mess)
         else:
-            self.view.populate_ped_cbox(self.ped_list)
+            self.view.populate_cbox(self.ped_list)
             self.view.template_load_btn.setDisabled(False)
 
             # Generate the attribute options with the ped list
@@ -172,7 +174,7 @@ class GTAVController:
                 "Success! Ped DB Loaded! Choose a ped template to get started!", 0
             )
 
-    def pick_ped_template(self):
+    def pick_template(self):
         """
         Show params for the picked ped
         """
@@ -194,19 +196,12 @@ class GTAVController:
         return self.cur_ped
 
     def generate_xml(self):
-
-        if self.view.form_layout.count() == 0:
-            self.view.error_dialogs(
-                "NO PED INFO", "No ped template found to generate xml!"
-            )
-            return
-
         new_val_dict = {}
 
-        for param in range(self.view.form_layout.rowCount()):
+        for param in range(self.view.scroll_form_layout.rowCount()):
             # itemAt(row, column) - column index [0(Label), 1(Lineedit/combobox)]
-            row_label = self.view.form_layout.itemAt(param, 0).widget().text()
-            row_param_widget = self.view.form_layout.itemAt(param, 1).widget()
+            row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
+            row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
 
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
@@ -252,6 +247,39 @@ class GTAVController:
                 err_message, "ERROR:\nCustom ped generation failed! Try again."
             )
 
+    def close_tab(self, index):
+        self.view.tab_area.removeTab(index)
+
+    def tab_rename(self, index):
+        tab_rename_dialog = QDialog(self.view)
+        tab_rename_dialog.setWindowTitle("Rename Tab")
+        dialog_layout = QVBoxLayout()
+
+        rename_label = QLabel("Enter name for the tab:")
+        rename_edit = QLineEdit(self.view.tab_area.tabText(index).split(":")[-1])
+        rename_button_group = QDialogButtonBox(
+            QDialogButtonBox.Ok | QDialogButtonBox.Cancel
+        )
+
+        dialog_layout.addWidget(rename_label)
+        dialog_layout.addWidget(rename_edit)
+        dialog_layout.addWidget(rename_button_group)
+
+        tab_rename_dialog.setLayout(dialog_layout)
+        rename_button_group.accepted.connect(tab_rename_dialog.accept)
+        rename_button_group.rejected.connect(tab_rename_dialog.reject)
+
+        tab_rename_dialog.exec_()
+
+        if QDialog.accepted:
+            # [PED, PEDPERS, WEAP, WEAPARCH, WEAPANIM, WEAPCOMP, LOAD, PICKUP]
+            if self.view.tab_area.tabText(index).split(":")[0] == "PED":
+                new_name = f"PED:{rename_edit.text()}"
+                self.view.tab_area.setTabText(index, new_name)
+            else:
+                new_name = f"{rename_edit.text()}"
+                self.view.tab_area.setTabText(index, new_name)
+
 
 class GTAVMainWindow(QMainWindow):
     """Main GUI"""
@@ -260,7 +288,7 @@ class GTAVMainWindow(QMainWindow):
         super().__init__()
 
         # Main window settings
-        self.setWindowTitle(f"GTA V Addon XML Creator V{APP_VERSION}")
+        self.setWindowTitle(f"GTA V Addon META Creator V{APP_VERSION}")
         # setGeometry(x-pos, y-pos, width, height)
         self.setGeometry(800, 200, 715, 500)
 
@@ -292,11 +320,13 @@ class GTAVMainWindow(QMainWindow):
         self.app_layout = QVBoxLayout()
 
         # Create the rest of the gui and add to main layout
-
+        # Keep for now
         self.create_title_labels()
-        self.create_load_ped_xml()
+        self.create_load_file()
         self.create_load_template()
-        self.create_scroll_area()
+
+        # Tab widget for form creation
+        self.create_tab_area()
         self.create_generate_btn()
 
         self.app_widget.setLayout(self.app_layout)
@@ -375,14 +405,20 @@ class GTAVMainWindow(QMainWindow):
         self.title_layout = QVBoxLayout()
 
         # Labels
-        self.title_label = QLabel(f"GTA V Addon XML Creator V{APP_VERSION}")
+        self.title_label = QLabel(f"GTA V Addon META Creator V{APP_VERSION}")
         self.title_label.setFixedHeight(25)
         self.title_label.setAlignment(Qt.AlignCenter)
-        self.title_label.setFont(QFont("pricedown", 20))
+        try:
+            self.title_label.setFont(QFont("pricedown", 20))
+        except:
+            self.title_label.setFont(QFont("Arial", 20))
         self.author_label = QLabel("By: Steeldrgn")
         self.author_label.setFixedHeight(30)
         self.author_label.setAlignment(Qt.AlignCenter)
-        self.author_label.setFont(QFont("pricedown", 20))
+        try:
+            self.author_label.setFont(QFont("pricedown", 20))
+        except:
+            self.author_label.setFont(QFont("Arial", 20))
 
         # Add labels to layout
         self.title_layout.addWidget(self.title_label)
@@ -391,23 +427,24 @@ class GTAVMainWindow(QMainWindow):
         # Add to app layout
         self.app_layout.addLayout(self.title_layout)
 
-    def create_load_ped_xml(self):
+    def create_load_file(self):
         # Layout
-        self.load_ped_xml_layout = QHBoxLayout()
+        self.load_xml_layout = QHBoxLayout()
 
         # Widgets
         self.path_line_edit = QLineEdit()
-        self.path_line_edit.setPlaceholderText("PATH TO PEDS.YMT.XML FILE")
+        self.path_line_edit.setPlaceholderText("PATH TO META or XML FILE")
         self.path_line_edit.setAlignment(Qt.AlignCenter)
 
-        self.path_btn = QPushButton("Load Peds File")
+        # TODO: Change to variable load
+        self.path_btn = QPushButton("Load File")
 
         # Add to self layout
-        self.load_ped_xml_layout.addWidget(self.path_line_edit)
-        self.load_ped_xml_layout.addWidget(self.path_btn)
+        self.load_xml_layout.addWidget(self.path_line_edit)
+        self.load_xml_layout.addWidget(self.path_btn)
 
         # Add the main layout
-        self.app_layout.addLayout(self.load_ped_xml_layout)
+        self.app_layout.addLayout(self.load_xml_layout)
         self.path_btn.setFocus()
 
     def create_load_template(self):
@@ -415,10 +452,10 @@ class GTAVMainWindow(QMainWindow):
         self.template_layout = QHBoxLayout()
 
         # Widgets
-        self.template_label = QLabel("Choose A Ped Template: ")
+        self.template_label = QLabel("Choose A Template: ")
         self.template_label.setAlignment(Qt.AlignCenter)
         self.template_cbox = QComboBox()
-        self.template_cbox.addItem("-----Choose A Ped-----")
+        self.template_cbox.addItem("-----Choose A Template-----")
         self.template_cbox.setCurrentIndex(0)
         self.template_cbox.setEditable(True)
         self.template_cbox.setInsertPolicy(QComboBox.NoInsert)
@@ -435,42 +472,29 @@ class GTAVMainWindow(QMainWindow):
         # Add to the main layout
         self.app_layout.addLayout(self.template_layout)
 
-    def create_scroll_area(self):
-        """
-        Scroll area for the ped params that can be edited
-        """
-        # Scroll area needs a widget - Set layout to the widget
-        self.scroll_widget = QWidget()
-
-        # Form layout for the widget
-        self.form_layout = QFormLayout()
-        self.scroll_widget.setLayout(self.form_layout)
-
-        # Scroll area
-        self.scroll_area = QScrollArea()
-        self.scroll_area.setWidgetResizable(True)
-        self.scroll_area.setWidget(self.scroll_widget)
-
-        # Set it to the main layout
-        self.app_layout.addWidget(self.scroll_area)
+    def create_tab_area(self):
+        self.tab_area = QTabWidget()
+        self.tab_area.setTabsClosable(True)
+        self.tab_area.setMovable(True)
+        self.app_layout.addWidget(self.tab_area)
 
     def create_generate_btn(self):
         """
-        Generate xml button layout
+        Generate Meta button layout
         """
-        self.generate_btn = QPushButton("Generate XML")
+        self.generate_btn = QPushButton("Generate META File")
         self.generate_btn.setFixedHeight(40)
         self.generate_btn.setDisabled(True)
 
         self.app_layout.addWidget(self.generate_btn)
 
-    def populate_ped_cbox(self, ped_list):
+    def populate_cbox(self, object_list):
         """
         Add all ped objects to the combo box
         Connects the load peds file button
         """
-        for ped in ped_list:
-            self.template_cbox.addItem(ped.Name)
+        for item in object_list:
+            self.template_cbox.addItem(item.Name)
 
         if self.template_cbox.count() > 1:
             self.template_cbox.setDisabled(False)
@@ -480,19 +504,24 @@ class GTAVMainWindow(QMainWindow):
         Populate the scroll bar area with ped params
         Connects the Load Template button
         """
-
-        self.remove_params()
+        # ONE PAGE
+        scroll_area = QScrollArea()
+        scroll_area.setWidgetResizable(True)
+        scroll_widget = QWidget()
+        self.scroll_form_layout = QFormLayout()
+        scroll_widget.setLayout(self.scroll_form_layout)
+        scroll_area.setWidget(scroll_widget)
 
         for k, v in cur_ped_template.return_att_dict().items():
             # Allow editing of name
             if k == "Name":
-                self.form_layout.addRow(QLabel(k), QLineEdit(v))
+                self.scroll_form_layout.addRow(QLabel(k), QLineEdit(v))
             elif v == None:
-                self.form_layout.addRow(QLabel(k), QLineEdit())
+                self.scroll_form_layout.addRow(QLabel(k), QLineEdit())
             elif isinstance(v, list):
                 param_label = QLabel(f"{k} HasChildren")
                 param_label2 = QLabel("See Items Below:")
-                self.form_layout.addRow(param_label, param_label2)
+                self.scroll_form_layout.addRow(param_label, param_label2)
 
                 for item in v:
                     param_label = QLabel(f"{k} Item")
@@ -501,13 +530,13 @@ class GTAVMainWindow(QMainWindow):
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
                     param_cbox.setCurrentText(item.text)
-                    self.form_layout.addRow(param_label, param_cbox)
+                    self.scroll_form_layout.addRow(param_label, param_cbox)
 
             elif isinstance(v, LET._Attrib):
                 param_label = QLabel(k)
                 param_edit_line = QLineEdit(v["value"])
 
-                self.form_layout.addRow(param_label, param_edit_line)
+                self.scroll_form_layout.addRow(param_label, param_edit_line)
 
             elif isinstance(v, str):
                 param_label = QLabel(k)
@@ -518,12 +547,13 @@ class GTAVMainWindow(QMainWindow):
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
                     param_cbox.setCurrentText(v)
-                    self.form_layout.addRow(param_label, param_cbox)
+                    self.scroll_form_layout.addRow(param_label, param_cbox)
 
                 else:
                     param_edit_line = QLineEdit(v)
-                    self.form_layout.addRow(param_label, param_edit_line)
+                    self.scroll_form_layout.addRow(param_label, param_edit_line)
 
+        self.tab_area.addTab(scroll_area, f"PED: {cur_ped_template.Name}")
         self.generate_btn.setDisabled(False)
 
     def error_dialogs(self, error, other_message=None):
@@ -553,24 +583,10 @@ class GTAVMainWindow(QMainWindow):
         elif error == "GENERATE FAILED":
             QMessageBox(self, error, other_message)
 
-    def remove_params(self):
-        """ 
-        Clear out rows in form layout before repopulating
-        """
-
-        form_items = self.form_layout.rowCount()
-
-        if form_items == 0:
-            return
-        else:
-            for item in reversed(range(form_items)):
-                self.form_layout.removeRow(item)
-
     def clear_combo_box(self):
         if self.template_cbox.count() > 1:
             self.template_cbox.clear()
-            self.remove_params()
-            self.template_cbox.addItem("-----Choose A Ped-----")
+            self.template_cbox.addItem("-----Choose A Template-----")
             self.template_cbox.setCurrentIndex(0)
 
     def get_ped_path_text(self):
@@ -604,15 +620,18 @@ def main():
 
     # Adding a custom font
     # Create new QFontdatabase class
-    font_db = QFontDatabase()
-    # Add custom font into the database
-    font_id = font_db.addApplicationFont("fonts/pricedownbl.ttf")
-    # Add font to a font family
-    pd_font_fam = font_db.applicationFontFamilies(font_id)
-    pricedown = QFont(pd_font_fam[0])
+    try:
+        font_db = QFontDatabase()
+        # Add custom font into the database
+        font_id = font_db.addApplicationFont("fonts/pricedownbl.ttf")
+        # Add font to a font family
+        pd_font_fam = font_db.applicationFontFamilies(font_id)
+        pricedown = QFont(pd_font_fam[0])
+    except:
+        print("Pricedown font not found, falling back to Arial")
 
+    # Set all other text to Arial size 11
     app.setFont(QFont("Arial", 11))
-
     q_settings = False
 
     try:
