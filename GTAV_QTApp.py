@@ -196,19 +196,12 @@ class GTAVController:
         return self.cur_ped
 
     def generate_xml(self):
-
-        if self.view.form_layout.count() == 0:
-            self.view.error_dialogs(
-                "NO PED INFO", "No ped template found to generate META file!"
-            )
-            return
-
         new_val_dict = {}
 
-        for param in range(self.view.form_layout.rowCount()):
+        for param in range(self.view.scroll_form_layout.rowCount()):
             # itemAt(row, column) - column index [0(Label), 1(Lineedit/combobox)]
-            row_label = self.view.form_layout.itemAt(param, 0).widget().text()
-            row_param_widget = self.view.form_layout.itemAt(param, 1).widget()
+            row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
+            row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
 
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
@@ -514,20 +507,20 @@ class GTAVMainWindow(QMainWindow):
         scroll_area = QScrollArea()
         scroll_area.setWidgetResizable(True)
         scroll_widget = QWidget()
-        scroll_form_layout = QFormLayout()
-        scroll_widget.setLayout(scroll_form_layout)
+        self.scroll_form_layout = QFormLayout()
+        scroll_widget.setLayout(self.scroll_form_layout)
         scroll_area.setWidget(scroll_widget)
 
         for k, v in cur_ped_template.return_att_dict().items():
             # Allow editing of name
             if k == "Name":
-                scroll_form_layout.addRow(QLabel(k), QLineEdit(v))
+                self.scroll_form_layout.addRow(QLabel(k), QLineEdit(v))
             elif v == None:
-                scroll_form_layout.addRow(QLabel(k), QLineEdit())
+                self.scroll_form_layout.addRow(QLabel(k), QLineEdit())
             elif isinstance(v, list):
                 param_label = QLabel(f"{k} HasChildren")
                 param_label2 = QLabel("See Items Below:")
-                scroll_form_layout.addRow(param_label, param_label2)
+                self.scroll_form_layout.addRow(param_label, param_label2)
 
                 for item in v:
                     param_label = QLabel(f"{k} Item")
@@ -536,13 +529,13 @@ class GTAVMainWindow(QMainWindow):
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
                     param_cbox.setCurrentText(item.text)
-                    scroll_form_layout.addRow(param_label, param_cbox)
+                    self.scroll_form_layout.addRow(param_label, param_cbox)
 
             elif isinstance(v, LET._Attrib):
                 param_label = QLabel(k)
                 param_edit_line = QLineEdit(v["value"])
 
-                scroll_form_layout.addRow(param_label, param_edit_line)
+                self.scroll_form_layout.addRow(param_label, param_edit_line)
 
             elif isinstance(v, str):
                 param_label = QLabel(k)
@@ -553,11 +546,11 @@ class GTAVMainWindow(QMainWindow):
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
                     param_cbox.setCurrentText(v)
-                    scroll_form_layout.addRow(param_label, param_cbox)
+                    self.scroll_form_layout.addRow(param_label, param_cbox)
 
                 else:
                     param_edit_line = QLineEdit(v)
-                    scroll_form_layout.addRow(param_label, param_edit_line)
+                    self.scroll_form_layout.addRow(param_label, param_edit_line)
 
         self.tab_area.addTab(scroll_area, f"PED: {cur_ped_template.Name}")
         self.generate_btn.setDisabled(False)
