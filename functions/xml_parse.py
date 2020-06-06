@@ -59,7 +59,7 @@ def xml_meta_parser(xml_file):
     if xml_root.tag == 'CPedModelInfo__InitDataList':
         # I just wanted the items in InitDatas
         xml_ped_elements = xml_root.findall("./InitDatas/Item")
-        ped_objects = create_parsed_objects(xml_ped_elements)
+        ped_objects = create_parsed_objects(xml_ped_elements, 'ped')
 
         return ped_objects, err_message
 
@@ -80,15 +80,15 @@ def xml_meta_parser(xml_file):
             if item.get('type') == 'CWeaponInfo':
                 weapon_element_list.append(item)
         
-        parsed_weapon_objects = create_parsed_objects(weapon_element_list)
-        slot_nav_objects = weapon_slots(nav_order_elements)
-        slot_best_objects = weapon_slots(best_order_elements)
+        parsed_weapon_objects = create_parsed_objects(weapon_element_list, 'weap')
+        
+        return parsed_weapon_objects, err_message
 
     else:
         err_message = "NOT A VALID META/XML FILE"
         return None, err_message
 
-def create_parsed_objects(xml_elements):
+def create_parsed_objects(xml_elements, obj_type=None):
     """
     Parse elements of interest to create objects with their respective params
     """
@@ -96,63 +96,60 @@ def create_parsed_objects(xml_elements):
     parsed_object_list = []
     for element_object in xml_elements:
             param_dictionary = {}
+            param_dictionary['object_type'] = obj_type
             for param in element_object:
                 # Parameter has child elements
                 # Weapons.meta specific parse
+                
                 # Weapon OverrideForces
                 if param.tag == 'OverrideForces':
                     override_forces_parsed = []
-                    # OverrideForaces Item
-                    for sub in param.findall('*'):
+                    # OverrideForces Item
+                    for item in param.findall('Item'):
                         force_item = {}
-                        force_item[sub.tag] = []
-
+                        force_item[item.tag] = []
                         # BoneTag, Forcefront, forceback
-                        for sub2 in sub.findall('*'):
-                            if sub2.text:
-                                force_item[sub.tag].append({sub2.tag:sub2.text})
-                            elif sub2.attrib:
-                                force_item[sub.tag].append({sub2.tag:sub2.attrib})
-                                
+                        for item_param in item.findall('*'):
+                            if item_param.text:
+                                force_item[item.tag].append({item_param.tag:item_param.text})
+                            elif item_param.attrib:
+                                force_item[item.tag].append({item_param.tag:item_param.attrib})
                         override_forces_parsed.append(force_item)
-                    param_dictionary['OverrideForces'] = override_forces_parsed
+                    param_dictionary[param.tag] = override_forces_parsed
 
                 # Weapon AttachPoints - Has multiple children elements
-                if param.tag == 'AttachPoints':
+                elif param.tag == 'AttachPoints':
                     attach_items = []
-                    # Attachment elements
-                    for sub1 in param.findall('*'):
+                    # All attachpoint <Item> elements
+                    for item in param.findall('*'):
                         attach_params = {}
-                        attach_params[sub1.tag] = []
+                        attach_params[item.tag] = []
                         # AttachBone & Component elements
-                        for sub2 in sub1.findall('*'):
-                            # AttachBone Element - No Children
-                            if len(sub2.findall('*')) < 1:
-                                if sub2.text:
-                                    attach_params[sub1.tag].append({sub2.tag: sub2.text})
+                        for bone_component in item.findall('*'):
+                            # AttachBone Element
+                            if bone_component.tag == 'AttachBone':
+                                attach_params[item.tag].append({bone_component.tag: bone_component.text})
                             # Component Element - Has children
-                            else:
+                            elif bone_component.tag == 'Components':
                                 comp_elements = {}
-                                # sub2.tag == Components
-                                comp_elements[sub2.tag] = []
-                                for sub3 in sub2.findall('*'):
+                                comp_elements[bone_component.tag] = []
+                                 # Component <Item> Elements
+                                for component_item in bone_component.findall('*'):
                                     name_default = {}
-                                    # sub3.tag == Item
-                                    name_default[sub3.tag] = []
-                                    for sub4 in sub3.findall('*'):
-                                        # sub4.tag == Name or Default
-                                        if sub4.text:
-                                            name_default[sub3.tag].append({sub4.tag:sub4.text})
-                                        elif sub4.attrib:
-                                            name_default[sub3.tag].append({sub4.tag:sub4.attrib})
-
-                                    comp_elements[sub2.tag].append(name_default)
-
-                                attach_params[sub1.tag].append(comp_elements)
-
+                                    name_default[component_item.tag] = []
+                                    # Dictionary for component elements
+                                    for comp_item_param in component_item.findall('*'):
+                                        # Add individual param for each component
+                                        if comp_item_param.text:
+                                            name_default[component_item.tag].append({comp_item_param.tag:comp_item_param.text})
+                                        elif comp_item_param.attrib:
+                                            name_default[component_item.tag].append({comp_item_param.tag:comp_item_param.attrib})
+                                    comp_elements[bone_component.tag].append(name_default)
+                                attach_params[item.tag].append(comp_elements)
+                        attach_items.append(attach_params)
                     param_dictionary[param.tag] = attach_items
 
-                if len(param) > 0:
+                elif len(param) > 0:
                     param_dictionary[param.tag] = []
                     for item in param:
                         param_dictionary[param.tag].append(item)
@@ -181,12 +178,19 @@ def attr_db(parsed_object_list):
         for k, v in gta_object.return_att_dict().items():
             if v == None:
                 continue
+            elif k == 'OverrideForces':
+                continue
+            elif k == 'AttachPoints':
+                continue
             elif isinstance(v, LET._Attrib):
                 parameter_database[k] = v
+
             elif (k not in parameter_database) and isinstance(v, list):
                 parameter_database[k] = {child.text for child in v}
+
             elif k not in parameter_database:
                 parameter_database[k] = {v}
+
             elif k in parameter_database and isinstance(v, list):
                 for child in v:
                     parameter_database[k].add(child.text)
@@ -213,7 +217,7 @@ def generate_new_object(object_template=None, new_val_dict=None):
 
         return new_object, error_mess
 
-def xml_writer(new_object, save_path, object_type='ped'):
+def xml_writer(new_object, save_path, object_type=None):
     """
     Appends the custom object to the respective META file. If no file is present, will create one first.
 
@@ -249,6 +253,7 @@ def xml_writer(new_object, save_path, object_type='ped'):
             # CWeaponInfoBlob/Infos/Item/Infos/<Weapon items>
             main_weap_tags = ['TintSpecValues', 'FiringPatternAliases', 'UpperBodyFixupExpressionData', 'AimingInfos']
             weap_xml_root = LET.Element('CWeaponInfoBlob')
+
             # TODO - Slot tags
             for tag in main_weap_tags:
                 LET.SubElement(weap_xml_root, tag)
@@ -265,7 +270,9 @@ def xml_writer(new_object, save_path, object_type='ped'):
 
     for attr, val in new_object.return_att_dict().items():
         # List datatype specifies parameter has more child elements
-        if val == "":
+        if attr == 'object_type':
+            pass
+        elif val == "":
             LET.SubElement(object_item, attr)
 
         # TODO: Need a specific way to parse weapon children
