@@ -182,6 +182,13 @@ def attr_db(parsed_object_list):
                 continue
             elif k == 'AttachPoints':
                 continue
+            elif k == 'WeaponFlags' and (k not in parameter_database):
+                parameter_database[k] = set()
+            elif k == 'WeaponFlags' and (k in parameter_database):
+                # Need to strip blank/ new line. Split flags to list
+                for flag in v.strip().strip('\n').strip().split(' '):
+                    parameter_database[k].add(flag)
+
             elif isinstance(v, LET._Attrib):
                 parameter_database[k] = v
 

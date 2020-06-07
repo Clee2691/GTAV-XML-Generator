@@ -514,21 +514,36 @@ class GTAVMainWindow(QMainWindow):
         scroll_area.setWidget(scroll_widget)
 
         for k, v in cur_template.return_att_dict().items():
-            # Allow editing of name
+            # Only internal use
             if k == 'object_type':
                 pass
+            # Allow editing of name
             elif k == "Name":
-                self.scroll_form_layout.addRow(QLabel(k), QLineEdit(v))
+                self.name_label = QLabel(k)
+                self.name_label.setAlignment(Qt.AlignHCenter)
+                self.name_line_edit = QLineEdit(v)
+                self.name_line_edit.setAlignment(Qt.AlignHCenter)
+                self.scroll_form_layout.addRow(self.name_label, self.name_line_edit)
             elif v == None:
-                self.scroll_form_layout.addRow(QLabel(k), QLineEdit())
+                param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
+                self.scroll_form_layout.addRow(param_label, QLineEdit())
             # Some lists have items with different tags -> Weapons.meta file
-            # <Fx>, <Explosion>
+            # <Fx>, <Explosion>, <WeaponFlags>
+            elif k == 'WeaponFlags':
+                # Will have a dialog with checkboxes
+                param_label = QLabel(f'{k} Params')
+                param_label.setAlignment(Qt.AlignHCenter)
+                self.param_btn = QPushButton(f'Edit {k}')
+                self.param_btn.clicked.connect(lambda x, cur_temp=cur_template, attr_dict=attr_dict: self.edit_weapon_flags(cur_temp, attr_dict))
+                self.scroll_form_layout.addRow(param_label, self.param_btn)
+
             elif isinstance(v, list):
                 param_label = QLabel(f"{k} HasChildren")
+                param_label.setAlignment(Qt.AlignHCenter)
 
                 # Separate dialog for parameters that have children elements
-                self.param_btn = QPushButton()
-                self.param_btn.setText(f"Edit {k}")
+                self.param_btn = QPushButton(f"Edit {k}")
 
                 # Clicked returns boolean, so need x as first parameter
                 self.param_btn.clicked.connect(lambda x, cur_temp=cur_template, btn_text=self.param_btn.text(): self.edit_param_clicked(cur_temp, btn_text))
@@ -537,6 +552,7 @@ class GTAVMainWindow(QMainWindow):
 
             elif isinstance(v, LET._Attrib):
                 param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
                 # For peds [value]
                 # For weapons: [value, ref, (x,y,z), ]
                 attrib_keys = v.keys()
@@ -556,6 +572,8 @@ class GTAVMainWindow(QMainWindow):
                     x_y_z_lineedits.append(QLineEdit(v['y']))
                     x_y_z_lineedits.append(QLineEdit(v['z']))
 
+                param_edit_line.setAlignment(Qt.AlignHCenter)
+
                 if len(x_y_z_lineedits) > 0:
                     for item in x_y_z_lineedits:
                         self.scroll_form_layout.addRow(param_label, item)
@@ -564,9 +582,11 @@ class GTAVMainWindow(QMainWindow):
 
             elif isinstance(v, str):
                 param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
 
                 if k in attr_dict.keys():
                     param_cbox = QComboBox()
+                    param_cbox.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLength)
                     param_cbox.addItems(attr_dict[k])
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
@@ -575,6 +595,7 @@ class GTAVMainWindow(QMainWindow):
 
                 else:
                     param_edit_line = QLineEdit(v)
+                    param_edit_line.setAlignment(Qt.AlignHCenter)
                     self.scroll_form_layout.addRow(param_label, param_edit_line)
         
         self.tab_area.addTab(scroll_area, f"PED: {cur_template.Name}")
@@ -606,6 +627,7 @@ class GTAVMainWindow(QMainWindow):
             for force_item in children_list:
                 for k, v in force_item.items():
                     self.item_label = QLabel(k)
+                    self.item_label.setAlignment(Qt.AlignHCenter)
                     dialog_form_layout.addWidget(self.item_label)
                     for force_param in v:
                         for k, v in force_param.items():
@@ -617,16 +639,22 @@ class GTAVMainWindow(QMainWindow):
                                 self.force_name = QLabel(k)
                                 self.force_value = QLineEdit(v['value'])
 
+                            self.force_name.setAlignment(Qt.AlignHCenter)
+                            self.force_value.setAlignment(Qt.AlignHCenter)
+
                             dialog_form_layout.addRow(self.force_name, self.force_value)
 
         elif param == 'AttachPoints':
             for attach_point_elements in children_list:
                 for k, v in attach_point_elements.items():
                     self.attach_label = QLabel(f'AttachPoint {k}')
+                    self.attach_label.setAlignment(Qt.AlignHCenter)
                     dialog_form_layout.addWidget(self.attach_label)  
                     # Bone
                     self.bone_label = QLabel('AttachBone')
+                    self.bone_label.setAlignment(Qt.AlignHCenter)
                     self.bone_edit = QLineEdit(v[0]['AttachBone'])
+                    self.bone_edit.setAlignment(Qt.AlignHCenter)
                     dialog_form_layout.addRow(self.bone_label, self.bone_edit)
 
                     # Components
@@ -637,6 +665,7 @@ class GTAVMainWindow(QMainWindow):
                             # Item dictionaries
                             for k2, v2 in comp_items.items():
                                 self.comp_item_label = QLabel('Component Item')
+                                self.comp_item_label.setAlignment(Qt.AlignHCenter)
                                 dialog_form_layout.addWidget(self.comp_item_label)
                                 for comp_param in v2:
                                     for k3, v3 in comp_param.items():
@@ -646,13 +675,17 @@ class GTAVMainWindow(QMainWindow):
                                         elif k3 == 'Default':
                                             self.comp_param_label = QLabel(k3)
                                             self.comp_param_edit = QLineEdit(v3['value'])
-                                        
+
+                                        self.comp_param_label.setAlignment(Qt.AlignHCenter)
+                                        self.comp_param_edit.setAlignment(Qt.AlignHCenter)                                        
                                         dialog_form_layout.addRow(self.comp_param_label, self.comp_param_edit)
 
         else:
             for item in children_list:
                 param_label = QLabel(f"{item.tag}")
+                param_label.setAlignment(Qt.AlignHCenter)
                 param_cbox = QComboBox()
+                param_cbox.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLength)
                 x_y_z_lineedits = []
                 
                 if item.text:
@@ -677,10 +710,13 @@ class GTAVMainWindow(QMainWindow):
                         x_y_z_lineedits.append(('X', QLineEdit(item.attrib['x'])))
                         x_y_z_lineedits.append(('Y', QLineEdit(item.attrib['y'])))
                         x_y_z_lineedits.append(('Z', QLineEdit(item.attrib['z'])))
+                    
+                    param_edit_line.setAlignment(Qt.AlignHCenter)
 
                     if len(x_y_z_lineedits) > 0:
                         for x_y_z_item in x_y_z_lineedits:
                             param_label2 = QLabel(f'{item.tag}: {x_y_z_item[0]}')
+                            param_label2.setAlignment(Qt.AlignHCenter)
                             dialog_form_layout.addRow(param_label2, x_y_z_item[1])
                     else:
                         dialog_form_layout.addRow(param_label, param_edit_line)
@@ -695,8 +731,66 @@ class GTAVMainWindow(QMainWindow):
         result = param_dialog.exec_()
 
         if result == QDialog.Accepted:
-            print('Saved!', param)  
-        
+            print('Saved!', param)
+
+    
+    def save_param_results(self):
+        pass
+    
+    def edit_weapon_flags(self, cur_temp, attr_dict):
+        flag_dialog = QDialog()
+        flag_dialog.setWindowTitle('Edit WeaponFlags')
+        flag_dialog_btns = QDialogButtonBox(QDialogButtonBox.Save | QDialogButtonBox.Cancel)
+        # Width, Height
+        flag_dialog.setMinimumSize(350, 250)
+        flag_dialog_vlayout = QVBoxLayout()
+        flag_checkbox_layout = QGridLayout()
+        weap_flag_label = QLabel('WeaponFlags')
+
+        flag_dialog_vlayout.addWidget(weap_flag_label)
+        flag_dialog_vlayout.addLayout(flag_checkbox_layout)
+        flag_dialog_vlayout.addWidget(flag_dialog_btns)
+
+        weapon_flags = cur_temp.WeaponFlags
+        weapflag_list = weapon_flags.split(' ')
+        flag_qobjects = []
+
+        # 96 Unique flags
+        for weap_flag in attr_dict['WeaponFlags']:
+            if weap_flag in weapflag_list:
+                flag_check = QCheckBox(weap_flag)
+                flag_check.setChecked(True)
+                flag_qobjects.append(flag_check)
+            else:
+                flag_check = QCheckBox(weap_flag)
+                flag_check.setChecked(False)
+                flag_qobjects.append(flag_check)
+
+        # Making grid labels for gridlayout - 96 different flags
+        grid_list = []
+        # Rows -> Columns
+        for i in range(20):
+            for j in range(5):
+                grid_list.append((i,j))
+
+        num = 0
+        try:
+            for flag_obj in flag_qobjects:
+                flag_checkbox_layout.addWidget(flag_obj, grid_list[num][0], grid_list[num][1])
+                num += 1
+        except IndexError:
+            pass
+
+        flag_dialog.setLayout(flag_dialog_vlayout)
+
+        flag_dialog_btns.accepted.connect(flag_dialog.accept)
+        flag_dialog_btns.rejected.connect(flag_dialog.reject)
+
+        result = flag_dialog.exec_()
+
+        if result == QDialog.Accepted:
+            print('Saved!')
+
     def error_dialogs(self, error, other_message=None):
         """
         Error messages to be shown
