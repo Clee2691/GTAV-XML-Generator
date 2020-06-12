@@ -620,10 +620,16 @@ class GTAVMainWindow(QMainWindow):
         dialog_scroll_widget.setLayout(dialog_form_layout)
         dialog_scroll.setWidget(dialog_scroll_widget)
 
-        children_list = getattr(cur_temp, param)
         # getattr() for accessing attribute of class with variable
-        if param == 'OverrideForces':
-
+        children_list = getattr(cur_temp, param)
+        # Empty parameter set - e.g. AttachPoints for melee weapons
+        if len(children_list) < 1:
+            QMessageBox.information(self, 'No Extra Params', f'There is nothing to edit for {param}.')
+            cur_temp.param = None
+            return
+            
+        # TODO: Recursion?
+        elif param == 'OverrideForces':
             for force_item in children_list:
                 for k, v in force_item.items():
                     self.item_label = QLabel(k)
@@ -659,6 +665,7 @@ class GTAVMainWindow(QMainWindow):
 
                     # Components
                     # Component Dictionary
+                    # TODO: Make recursion
                     for k1, v1 in v[1].items():
                         # List of comp item param dictionaries
                         for comp_items in v1:
@@ -684,42 +691,36 @@ class GTAVMainWindow(QMainWindow):
             for item in children_list:
                 param_label = QLabel(f"{item.tag}")
                 param_label.setAlignment(Qt.AlignHCenter)
-                param_cbox = QComboBox()
-                param_cbox.setSizeAdjustPolicy(QComboBox.AdjustToMinimumContentsLength)
-                x_y_z_lineedits = []
+                param_line_edit = QLineEdit()
+                param_line_edit.setAlignment(Qt.AlignHCenter)
+                # For attributes with XYZ elements
+                xyz_layout = QHBoxLayout()
                 
                 if item.text:
-                    param_cbox.addItem(item.text)
-                    param_cbox.setEditable(True)
-                    param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
-                    param_cbox.setCurrentText(item.text)
-                    dialog_form_layout.addRow(param_label, param_cbox)
+                    param_line_edit.setText(item.text)
+                    dialog_form_layout.addRow(param_label, param_line_edit)
 
                 elif item.attrib:
                     attrib_keys = item.attrib.keys()
                     if 'value' in attrib_keys:
-                        param_edit_line = QLineEdit(item.attrib['value'])
+                        param_line_edit.setText(item.attrib['value'])
+                        # param_edit_line = QLineEdit(item.attrib['value'])
                     elif 'ref' in attrib_keys:
-                        param_edit_line = QLineEdit(item.attrib['ref'])
-                    # Some params only have and x,y
-                    elif len(item.attrib) == 2:
-                        x_y_z_lineedits.append(('X', QLineEdit(item.attrib['x'])))
-                        x_y_z_lineedits.append(('Y', QLineEdit(item.attrib['y'])))
-                    # Some params hav x, y, z
-                    elif len(item.attrib) == 3:
-                        x_y_z_lineedits.append(('X', QLineEdit(item.attrib['x'])))
-                        x_y_z_lineedits.append(('Y', QLineEdit(item.attrib['y'])))
-                        x_y_z_lineedits.append(('Z', QLineEdit(item.attrib['z'])))
-                    
-                    param_edit_line.setAlignment(Qt.AlignHCenter)
+                        param_line_edit.setText(item.attrib['ref'])
+                    # Some params only have and x,y and x,y,z
+                    # Create a layout that holds all coordinates for the second part of form
+                    elif len(item.attrib) >= 2:
+                        for k, v in item.attrib.items():
+                            k_label = QLabel(k)
+                            v_edit = QLineEdit(v)
+                            v_edit.setAlignment(Qt.AlignHCenter)
+                            xyz_layout.addWidget(k_label)
+                            xyz_layout.addWidget(v_edit)
 
-                    if len(x_y_z_lineedits) > 0:
-                        for x_y_z_item in x_y_z_lineedits:
-                            param_label2 = QLabel(f'{item.tag}: {x_y_z_item[0]}')
-                            param_label2.setAlignment(Qt.AlignHCenter)
-                            dialog_form_layout.addRow(param_label2, x_y_z_item[1])
-                    else:
-                        dialog_form_layout.addRow(param_label, param_edit_line)
+                if xyz_layout.count() > 0:
+                    dialog_form_layout.addRow(param_label, xyz_layout)
+                else:
+                    dialog_form_layout.addRow(param_label, param_line_edit)
 
         param_layout.addWidget(dialog_scroll)
         param_layout.addWidget(dialog_buttons)
@@ -731,11 +732,103 @@ class GTAVMainWindow(QMainWindow):
         result = param_dialog.exec_()
 
         if result == QDialog.Accepted:
-            print('Saved!', param)
+            self.save_params(cur_temp, param, dialog_form_layout)
 
-    
-    def save_param_results(self):
-        pass
+    def save_params(self, cur_temp, param, layout_items):
+        row_pair_list = []
+        new_pair = []
+        count = 0
+
+        if param == 'OverrideForces':
+            for item in range(layout_items.count()):
+                item_text = layout_items.itemAt(item).widget().text()
+                if item_text == 'Item':
+                    continue
+                if count == 6:
+                    row_pair_list.append(tuple(new_pair))
+                    count = 1
+                    new_pair = [item_text]
+                else:
+                    new_pair.append(item_text)
+                    count += 1
+
+            row_pair_list.append(tuple(new_pair))
+
+        elif param == 'AttachPoints':
+            attach_points = {}
+            attach_items = []
+            for item in range(layout_items.count()):
+                item_text = layout_items.itemAt(item).widget().text()
+                # Each label with attachpoint item creates a new item dictionary containing components
+                # Does not add attachpoint item label to dictionary
+                if item_text == 'AttachPoint Item':
+                    if len(attach_points) == 0:
+                        pass
+                    # Ensures adding label: value pairs to the item dictionary
+                    # Adds the Default:true/false to end of first attachpoint
+                    elif len(attach_items) == 2:
+                        attach_points['Item'].append(tuple(attach_items))
+                        attach_items = []
+                        row_pair_list.append(attach_points.copy())
+
+                    # Creates new empty list for next item
+                    attach_points['Item'] = []
+                    continue
+                
+                # Does not add component item to list/dictionary
+                if item_text == 'Component Item':
+                    attach_points['Item'].append(tuple(attach_items))
+                    attach_items = []
+                    continue
+                if len(attach_items) != 2:
+                    attach_items.append(item_text)
+                else:
+                    attach_points['Item'].append(tuple(attach_items))
+                    attach_items = [item_text]
+            # Add last pair to list
+            attach_points['Item'].append(tuple(attach_items))
+            row_pair_list.append(attach_points)
+                
+        else:
+
+            for item in range(layout_items.count()):
+                form_widget = layout_items.itemAt(item)
+
+                # If item is a widget - Text associated with it
+                if isinstance(form_widget, QWidgetItem):
+                    item_text = form_widget.widget().text()
+
+                # For items with XYZ attrib values
+                elif isinstance(form_widget, QHBoxLayout):
+                    item_text = []
+                    item_pair = []
+                    hbox_param_layout = form_widget.layout()
+                    for index in range(hbox_param_layout.count()):
+                        xyz_text = hbox_param_layout.itemAt(index).widget().text()
+                        # First index is label (x ,y ,z)
+                        if index % 2 == 0:
+                            item_pair.append(xyz_text)
+
+                        # Second index is the value
+                        else:
+                            item_pair.append(xyz_text)
+                            item_text.append(tuple(item_pair))
+                            item_pair = []
+                            
+                # Loop through all other parameters
+                if item % 2 == 0:
+                    new_pair.append(item_text)
+                else:
+                    new_pair.append(item_text)
+                    row_pair_list.append(tuple(new_pair))
+                    new_pair = []
+
+        #print(getattr(cur_temp, param))
+        #print(row_pair_list)
+        new_params = xml_parse.element_maker(param, row_pair_list)
+
+        cur_temp.update_attr(new_params)
+        #print(getattr(cur_temp, param))
     
     def edit_weapon_flags(self, cur_temp, attr_dict):
         flag_dialog = QDialog()
@@ -753,10 +846,9 @@ class GTAVMainWindow(QMainWindow):
 
         weapon_flags = cur_temp.WeaponFlags
         weapflag_list = weapon_flags.split(' ')
-        flag_qobjects = []
 
-        # 96 Unique flags
-        for weap_flag in attr_dict['WeaponFlags']:
+        flag_qobjects = []
+        for weap_flag in sorted(attr_dict['WeaponFlags']):
             if weap_flag in weapflag_list:
                 flag_check = QCheckBox(weap_flag)
                 flag_check.setChecked(True)
@@ -789,7 +881,13 @@ class GTAVMainWindow(QMainWindow):
         result = flag_dialog.exec_()
 
         if result == QDialog.Accepted:
-            print('Saved!')
+            checked_flags = []
+            for item_num in range(flag_checkbox_layout.count()):
+                item = flag_checkbox_layout.itemAt(item_num)
+                if item.widget().isChecked():
+                    checked_flags.append(item.widget().text())
+
+            cur_temp.WeaponFlags = ' '.join(checked_flags)
 
     def error_dialogs(self, error, other_message=None):
         """

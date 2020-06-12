@@ -35,6 +35,7 @@ class GTAObjects:
                 setattr(self, k, {'value': v})
             else:
                 setattr(self, k, v)
+
         return print("Attributes updated!")
 
     def __repr__(self):
@@ -320,3 +321,86 @@ def weapon_slots(slot_groups):
 
     return weap_slot_list
 
+def element_maker(param, new_param_list):
+    element_dict = {}
+
+    if param == 'OverrideForces':
+        override_dict = {}
+        override_list = []
+        for group in new_param_list:
+            override_dict['Item'] = []
+            override_dict['Item'].append({group[0]: group[1]})
+            override_dict['Item'].append({group[2]: {'value': group[3]}})
+            override_dict['Item'].append({group[4]: {'value': group[5]}})
+            override_list.append(override_dict.copy())
+
+        element_dict['OverrideForces'] = override_list
+
+    elif param == 'AttachPoints':
+        attach_list = []
+        
+        # List of dictionaries of items
+        for attach_dict in new_param_list:
+            attach_list_dict = {'Item': []}
+            # Each key is a list of the components
+            for k, v in attach_dict.items():
+                # AttachBone: Bone text
+                attach_list_dict['Item'].append({v[0][0]:v[0][1]}.copy())
+                comp_item_list_dict = {'Components': []}
+                comp_item_param_dict = {'Item': []}
+
+                for item in v[1:]:
+                    att_name, att_val = item
+                    # Default has a value: true/false dictionary
+                    if att_name == 'Default':
+                        comp_item_param_dict['Item'].append({att_name: {'value':att_val}.copy()}.copy())
+
+                        comp_item_list_dict['Components'].append(comp_item_param_dict.copy())
+
+                        comp_item_param_dict = {'Item': []}
+                    else:
+                        comp_item_param_dict['Item'].append({att_name: att_val}.copy())
+
+                attach_list_dict['Item'].append(comp_item_list_dict.copy())
+
+            attach_list.append(attach_list_dict.copy())
+
+        element_dict[param] = attach_list
+
+    elif param == 'Fx':
+        element_dict[param] = []
+
+        # Value attrib dictionaries
+        val_list = ['MuzzleSmokeFxMinLevel', 'MuzzleSmokeFxIncPerShot','MuzzleSmokeFxDecPerSec','TracerFxChanceSP', 
+                'TracerFxChanceMP', 'FlashFxChanceSP', 'FlashFxChanceMP', 'FlashFxAltChance', 'FlashFxScale',
+                'FlashFxLightEnabled', 'FlashFxLightCastsShadows', 'FlashFxLightOffsetDist', 'GroundDisturbFxEnabled', 'GroundDisturbFxDist']
+
+        for pair in new_param_list:
+            # If element requires an attribute dictionary
+            if pair[0] in val_list:
+                new_ele = LET.Element(pair[0], {'value':pair[1]})
+
+                element_dict[param].append(new_ele)
+            # Element with XYZ Params
+            elif isinstance(pair[1], list):
+                xyz_dict = {}
+
+                for item in pair[1]:
+                    xyz_dict[item[0]] = item[1]
+                new_ele = LET.Element(pair[0], xyz_dict)
+
+                element_dict[param].append(new_ele)
+            else:
+                new_ele = LET.Element(pair[0])
+                new_ele.text = pair[1]
+                element_dict[param].append(new_ele)
+                
+    else:
+        # List of elements
+        element_dict[param] = []
+        for pair in new_param_list:
+            new_ele = LET.Element(pair[0])
+            new_ele.text = pair[1]
+            element_dict[param].append(new_ele)
+
+    return element_dict
