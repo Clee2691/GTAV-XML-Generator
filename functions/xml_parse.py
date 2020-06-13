@@ -52,7 +52,10 @@ def xml_meta_parser(xml_file):
         file_parsed = LET.parse(xml_file)
     except FileNotFoundError:
         err_message = "FILE NOT FOUND"
-        return None, err_message
+        return None, err_message, None
+    except LET.XMLSyntaxError:
+        err_message = "XML PARSE ERROR"
+        return None, err_message, None
     
     xml_root = file_parsed.getroot()
     
@@ -62,7 +65,7 @@ def xml_meta_parser(xml_file):
         xml_ped_elements = xml_root.findall("./InitDatas/Item")
         ped_objects = create_parsed_objects(xml_ped_elements, 'ped')
 
-        return ped_objects, err_message
+        return ped_objects, err_message, 'ped'
 
     elif xml_root.tag == 'CWeaponInfoBlob':
         # SlotNavigateOrder needs 2 identical entries - Same ordernumber/entry
@@ -83,11 +86,11 @@ def xml_meta_parser(xml_file):
         
         parsed_weapon_objects = create_parsed_objects(weapon_element_list, 'weap')
         
-        return parsed_weapon_objects, err_message
+        return parsed_weapon_objects, err_message, 'weap'
 
     else:
         err_message = "NOT A VALID META/XML FILE"
-        return None, err_message
+        return None, err_message, None
 
 def create_parsed_objects(xml_elements, obj_type=None):
     """
@@ -183,13 +186,15 @@ def attr_db(parsed_object_list):
                 continue
             elif k == 'AttachPoints':
                 continue
-            elif k == 'WeaponFlags' and (k not in parameter_database):
-                parameter_database[k] = set()
-            elif k == 'WeaponFlags' and (k in parameter_database):
-                # Need to strip blank/ new line. Split flags to list
-                for flag in v.strip().strip('\n').strip().split(' '):
-                    parameter_database[k].add(flag)
-
+            elif k == 'WeaponFlags':
+                if (k not in parameter_database):
+                    parameter_database[k] = set()
+                else: 
+                    # Need to strip blank/ new line. Split flags to list
+                    for flag in v.strip().strip('\n').strip().split(' '):
+                        parameter_database[k].add(flag)
+            #elif k == 'WeaponFlags' and (k in parameter_database):
+                
             elif isinstance(v, LET._Attrib):
                 parameter_database[k] = v
 
@@ -246,16 +251,15 @@ def xml_writer(new_object, save_path, object_type=None):
             tree_root = object_tree.getroot().find('InitDatas')
             object_item = LET.SubElement(tree_root, 'Item')
         elif object_type == 'weap':
-            tree_root = object_tree.getroot().find('Infos')
-            sub1 = LET.SubElement(tree_root, 'Item')
-            sub2 = LET.SubElement(sub1, 'Infos')
-            object_item = LET.SubElement(sub2, 'Item', {'type':'CWeaponInfo'})
+            tree_root = object_tree.getroot().find('Infos/Item/Infos')
+            object_item = LET.SubElement(tree_root, 'Item', {'type':'CWeaponInfo'})
     # Reconstruct the tree from scratch if no existing file
     else:
         if object_type == 'ped':
             ped_xml_root = LET.Element('CPedModelInfo__InitDataList')
             ped_data_root = LET.SubElement(ped_xml_root, 'InitDatas')
             object_item = LET.SubElement(ped_data_root, "Item")
+
             object_tree = LET.ElementTree(ped_xml_root)
         elif object_type == 'weap':
             # CWeaponInfoBlob/Infos/Item/Infos/<Weapon items>
@@ -268,7 +272,7 @@ def xml_writer(new_object, save_path, object_type=None):
             
             weap_info_root = LET.SubElement(weap_xml_root, 'Infos')
             weap_item_root = LET.SubElement(weap_info_root, 'Item')
-            weap_sub_info = LET.SubElement(weapon_item_root, 'Infos')
+            weap_sub_info = LET.SubElement(weap_item_root, 'Infos')
             object_item = LET.SubElement(weap_sub_info, 'Item', {'type':'CWeaponInfo'})
 
             LET.SubElement(weap_xml_root, 'VehicleWeaponInfos')
@@ -276,6 +280,7 @@ def xml_writer(new_object, save_path, object_type=None):
 
             object_tree = LET.ElementTree(weap_xml_root)
 
+    # All children elements under object Item
     for attr, val in new_object.return_att_dict().items():
         # List datatype specifies parameter has more child elements
         if attr == 'object_type':
@@ -283,12 +288,47 @@ def xml_writer(new_object, save_path, object_type=None):
         elif val == "":
             LET.SubElement(object_item, attr)
 
-        # TODO: Need a specific way to parse weapon children
-        # many children of children
+        # Need to do overrideforces + attachpoints
+        elif attr == 'OverrideForces':
+            # Each item in val is a dictionary item
+            overforce_ele = LET.SubElement(object_item, attr)
+            for force in val:
+                # Base item element
+                item_ele = LET.SubElement(overforce_ele, 'Item')
+                for dict_items in force['Item']:
+                    for k, v in dict_items.items():
+                        # Bonetag tag has text not attribute dictionary
+                        if k == 'BoneTag':
+                            LET.SubElement(item_ele, k).text = v
+                        else:
+                            LET.SubElement(item_ele, k, v)
+
+        elif attr == 'AttachPoints':
+            # AttachPoints attribute is a pretty complicated dictionary of dictionaries of dictionaries
+            # Base attachpoints element
+            attachpoints_base = LET.SubElement(object_item, attr)
+            for base_item in val:
+                attachpoints_item = LET.SubElement(attachpoints_base, 'Item')
+                attach_bone = base_item['Item'][0]
+                LET.SubElement(attachpoints_item, 'AttachBone').text = attach_bone['AttachBone']
+                comp_base_ele = LET.SubElement(attachpoints_item, 'Components')
+                for comp_items in base_item['Item'][1]['Components']:
+                    component_item = LET.SubElement(comp_base_ele, 'Item')
+                    for item_param_dict in comp_items['Item']:
+                        for k, v in item_param_dict.items():
+                            if k == 'Name':
+                                LET.SubElement(component_item, k).text = v
+                            else:
+                                LET.SubElement(component_item, k, v)
+                        
+        # Elements with items are elements already
         elif isinstance(val, list):
             item1_subset = LET.SubElement(object_item, attr)
             for subitem in val:
-                LET.SubElement(item1_subset, "Item").text = subitem
+                if isinstance(subitem, LET._Element):
+                    item1_subset.append(subitem)
+                else:
+                    LET.SubElement(item1_subset, "Item").text = subitem
 
         # Dictionary datatype specifies element only attributes
         elif isinstance(val, dict):
@@ -322,6 +362,9 @@ def weapon_slots(slot_groups):
     return weap_slot_list
 
 def element_maker(param, new_param_list):
+    """
+    Specific to weapons.meta file for now
+    """
     element_dict = {}
 
     if param == 'OverrideForces':
