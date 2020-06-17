@@ -200,11 +200,15 @@ class GTAVController:
 
     def generate_xml(self):
         new_val_dict = {}
-
+        slot_list = []
         for param in range(self.view.scroll_form_layout.rowCount()):
             # itemAt(row, column) - column index [0(Label), 1(Lineedit/combobox)]
             row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
             row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
+
+            if row_label == 'SlotNavigateOrder Number' or row_label == 'SlotBestOrder Number':
+                slot_list.append((row_label.split(' ')[0], row_param_widget.text()))
+                continue
 
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
@@ -223,7 +227,7 @@ class GTAVController:
                 pass
             else:
                 temp_type = custom_obj.object_type
-                xml_parse.xml_writer(custom_obj, save_path, temp_type)
+                xml_parse.xml_writer(custom_obj, save_path, temp_type, slot_list)
                 QMessageBox.information(
                     QWidget(),
                     "SUCCESS",
@@ -497,6 +501,19 @@ class GTAVMainWindow(QMainWindow):
         self.scroll_form_layout = QFormLayout()
         scroll_widget.setLayout(self.scroll_form_layout)
         scroll_area.setWidget(scroll_widget)
+
+        if temp_type == 'WEAP':
+            # Slot Navigate order number
+            self.slotnav_name_label = QLabel('SlotNavigateOrder Number')
+            self.slotnav_line_edit = QLineEdit('0')
+            self.slotnav_line_edit.setAlignment(Qt.AlignHCenter)
+            self.scroll_form_layout.addRow(self.slotnav_name_label, self.slotnav_line_edit)
+
+            # Slot best order number
+            self.slotbest_label = QLabel('SlotBestOrder Number')
+            self.slotbest_line_edit = QLineEdit('0')
+            self.slotbest_line_edit.setAlignment(Qt.AlignHCenter)
+            self.scroll_form_layout.addRow(self.slotbest_label, self.slotbest_line_edit)
 
         for k, v in cur_template.return_att_dict().items():
             # Only internal use
@@ -916,9 +933,7 @@ class GTAVMainWindow(QMainWindow):
             )
         elif error == "XML PARSE ERROR":
             QMessageBox.warning(
-                self,
-                error,
-                "Error: \n Could not parse file. Possible Corruption?"
+                self, error, "Error: \n Could not parse file. Possible Corruption?"
             )
         elif error == "INVALID TEMPLATE":
             QMessageBox.warning(

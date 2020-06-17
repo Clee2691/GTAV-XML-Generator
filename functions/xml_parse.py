@@ -69,20 +69,20 @@ def xml_meta_parser(xml_file):
 
     elif xml_root.tag == 'CWeaponInfoBlob':
         # SlotNavigateOrder needs 2 identical entries - Same ordernumber/entry
-        slot_nav_order = xml_root.find('SlotNavigateOrder')
-        slot_best_order = xml_root.find('SlotBestOrder')
-        wep_infos = xml_root.find('Infos')
+        # slot_nav_order = xml_root.find('SlotNavigateOrder')
+        # slot_best_order = xml_root.find('SlotBestOrder')
+        weap_infos = xml_root.find('Infos')
 
         # Get weapon slots - Will need 3 total entries
         # Duplicate the SlotNavigateOrder
-        nav_order_elements = weapon_slots(slot_nav_order[0])
-        best_order_elements = weapon_slots(slot_best_order)
+        # nav_order_elements = weapon_slots(slot_nav_order[0])
+        # best_order_elements = weapon_slots(slot_best_order)
 
         # Gather all weapon elements before parsing into GTAObjects
         weapon_element_list = []
-        for item in wep_infos.iter('Item'):
+        for item in weap_infos.iter('Item'):
             if item.get('type') == 'CWeaponInfo':
-                weapon_element_list.append(item)
+                weapon_element_list.append(item)                                
         
         parsed_weapon_objects = create_parsed_objects(weapon_element_list, 'weap')
         
@@ -230,7 +230,7 @@ def generate_new_object(object_template=None, new_val_dict=None):
 
         return new_object, error_mess
 
-def xml_writer(new_object, save_path, object_type=None):
+def xml_writer(new_object, save_path, object_type=None, other_params=None):
     """
     Appends the custom object to the respective META file. If no file is present, will create one first.
 
@@ -250,9 +250,34 @@ def xml_writer(new_object, save_path, object_type=None):
             # InitDatas is the root for all ped items
             tree_root = object_tree.getroot().find('InitDatas')
             object_item = LET.SubElement(tree_root, 'Item')
+
         elif object_type == 'weap':
             tree_root = object_tree.getroot().find('Infos/Item/Infos')
             object_item = LET.SubElement(tree_root, 'Item', {'type':'CWeaponInfo'})
+
+            # Slot creation
+            slotnav_root = object_tree.getroot().find('SlotNavigateOrder')
+            slotbest_root = object_tree.getroot().find('SlotBestOrder/WeaponSlots')
+
+            for slot_item in other_params:
+                slot_label, slot_number = slot_item
+
+                if slot_label == 'SlotNavigateOrder':
+                    slot_base_item = slotnav_root.findall('Item/WeaponSlots')
+
+                    slot_nav_item = LET.Element('Item')
+                    LET.SubElement(slot_nav_item, 'OrderNumber', {'value': slot_number})
+                    LET.SubElement(slot_nav_item, 'Entry').text = new_object.Slot
+
+                    for slot_weap_item in slot_base_item:     
+                        slot_weap_item.append(copy.deepcopy(slot_nav_item))
+                        
+                else:
+                    slot_best_item = LET.Element('Item')
+                    LET.SubElement(slot_best_item, 'OrderNumber', {'value': slot_number})
+                    LET.SubElement(slot_best_item, 'Entry').text = new_object.Slot
+                    slotbest_root.append(copy.deepcopy(slot_best_item))
+
     # Reconstruct the tree from scratch if no existing file
     else:
         if object_type == 'ped':
@@ -266,7 +291,30 @@ def xml_writer(new_object, save_path, object_type=None):
             main_weap_tags = ['TintSpecValues', 'FiringPatternAliases', 'UpperBodyFixupExpressionData', 'AimingInfos']
             weap_xml_root = LET.Element('CWeaponInfoBlob')
 
-            # TODO - Slot tags
+            # slotnavigate/slotbest order items.
+            # List of Tuples (slotname label, number)
+            for slot_item in other_params:
+                slot_label, slot_number = slot_item
+
+                slot_base = LET.SubElement(weap_xml_root, slot_label)
+                # No initial item tag in slotnavigate order
+                if slot_label == 'SlotNavigateOrder':
+                    slot_base_item = LET.Element('Item')
+                    slot_weaponslots = LET.SubElement(slot_base_item, 'WeaponSlots')
+                else:
+                    slot_weaponslots = LET.Element('WeaponSlots')
+
+                slot_weapslot_item = LET.SubElement(slot_weaponslots, 'Item')
+                LET.SubElement(slot_weapslot_item, 'OrderNumber', {'value': slot_number})
+                LET.SubElement(slot_weapslot_item, 'Entry').text = new_object.Slot
+
+                if slot_label == 'SlotNavigateOrder':
+                    slot_base.append(copy.deepcopy(slot_base_item))
+                    slot_base.append(copy.deepcopy(slot_base_item))
+                else:
+                    slot_base.append(slot_weaponslots)
+
+            # ALl other empty tags
             for tag in main_weap_tags:
                 LET.SubElement(weap_xml_root, tag)
             
