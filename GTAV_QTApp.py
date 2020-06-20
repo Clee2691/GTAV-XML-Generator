@@ -1,4 +1,4 @@
-from functions import ped_xml_funcs, weapons_xml_funcs
+from functions import xml_parse
 import sys
 
 from PyQt5.QtWidgets import *
@@ -7,7 +7,8 @@ from PyQt5.QtGui import *
 
 import lxml.etree as LET
 
-APP_VERSION = 1.0
+APP_VERSION = 2.0
+AUTHOR = "Steeldrgn"
 
 
 class GTAVController:
@@ -23,7 +24,7 @@ class GTAVController:
         self.create_menu_actions()
 
     def conn_btn_signals(self):
-        self.view.path_btn.clicked.connect(self.load_ped_db)
+        self.view.path_btn.clicked.connect(self.load_db)
         self.view.template_load_btn.clicked.connect(self.pick_template)
         self.view.generate_btn.clicked.connect(self.generate_xml)
 
@@ -63,16 +64,16 @@ class GTAVController:
         self.help_text = """ <html> <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
         <h1 align="center">Help - How To Use</h1>
         <dl>
-        <dt>Step 1. Load Ped File</dt>
-        <dd>- Select a peds meta or XML file either through the file browser or file menu and press load.</dd><br>
-        <dt>Step 2. Pick Ped Template</dt>
-        <dd>- Once the database is loaded, pick a ped template to start editing the parameters.</dt><br>
-        <dt>Step 3. Edit Ped Parameters</dt>
+        <dt>Step 1. Load META/XML File</dt>
+        <dd>- Select a peds, weapon, etc. meta or XML file either through the file browser or file menu and press load.</dd><br>
+        <dt>Step 2. Pick Object Template</dt>
+        <dd>- Once the database is loaded, pick an object template to start editing the parameters.</dt><br>
+        <dt>Step 3. Edit Object Parameters</dt>
         <dd>Edit the parameters you want and press generate meta file.</dd><br>
         <dt>Step 4. Locate File</dt>
-        <dd>Check peds_xml_files folder for the generated meta file.</dd><br>
+        <dd>Check save location folder for the generated meta file.</dd><br>
         <dt>Step 5. Enjoy!</dt>
-        <dd>Place file in desired location and enjoy your addon ped!</dd><br>
+        <dd>Place file in desired location and enjoy your addon ped, weapon, etc!</dd><br>
         </ol>
         </body>
         </html>
@@ -97,7 +98,7 @@ class GTAVController:
         <html> 
         <body style=" font-family:'Arial'; font-size:10pt; font-weight:400; font-style:normal;">
         <h1 align="center">GTA V Addon META Creator V{APP_VERSION}</h1>
-        <h3 align="center"> Author: Steeldrgn \u00A92020</h3>
+        <h3 align="center"> Author: {AUTHOR} \u00A92020</h3>
         </body>
         </html>
         """
@@ -120,16 +121,16 @@ class GTAVController:
         self.load_file_dialog = QFileDialog()
         file_path, _ = self.load_file_dialog.getOpenFileName(
             self.view,
-            "Load Peds META or XML File",
+            "Load META or XML File",
             "./database",
             "XML, META Files (*.meta *.xml)",
             "",
         )
-        self.view.set_ped_file_path(file_path)
+        self.view.set_file_path(file_path)
 
     def dir_view_select(self, index):
         """ 
-        Update path_line_edit field with valid peds meta or xml file 
+        Update path_line_edit field with valid peds, weapon, etc. meta or xml file 
         QTreeView.doubleclicked event passes QModelIndex object as a parameter
         """
 
@@ -143,108 +144,104 @@ class GTAVController:
         # fileInfo returns a QFileInfo object
         file_isFile = index.model().fileInfo(index).isFile()
 
-        self.view.set_ped_file_path(file_path)
+        self.view.set_file_path(file_path)
 
-    def load_ped_db(self):
+    def load_db(self):
         """ 
-        Initial loading of the ped database
+        Initial loading of the object database
         """
         self.view.clear_combo_box()
 
-        xml_path = self.view.get_ped_path_text()
+        xml_path = self.view.get_path_text()
         if xml_path == "":
             self.err_mess = "PATH EMPTY"
             self.view.error_dialogs(self.err_mess)
             return
 
-        # Load the ped database and any error messages
-        self.ped_list, self.err_mess = ped_xml_funcs.ped_generator(xml_path)
+        # Load the database and any error messages
+        self.object_list, self.err_mess, temp_type = xml_parse.xml_meta_parser(xml_path)
 
         # Creates error dialog boxes if there are errors
         if self.err_mess:
             self.view.error_dialogs(self.err_mess)
         else:
-            self.view.populate_cbox(self.ped_list)
+            self.view.populate_cbox(self.object_list)
             self.view.template_load_btn.setDisabled(False)
 
-            # Generate the attribute options with the ped list
-            self.attr_db = ped_xml_funcs.attr_db(self.ped_list)
-            # QMessageBox.information(QWidget(), 'SUCCESS','Ped DB Loaded!\nChoose a ped template to get started.')
+            # Generate the attribute options with the object list
+            self.attr_db = xml_parse.attr_db(self.object_list)
             self.view.statusBar().showMessage(
-                "Success! Ped DB Loaded! Choose a ped template to get started!", 0
+                f"Success! {temp_type} DB Loaded! Choose a {temp_type} template to get started!",
+                0,
             )
 
     def pick_template(self):
         """
-        Show params for the picked ped
+        Show params for the picked ped, weapon, etc.
         """
-        current_ped_text = self.view.get_ped_template_text()
+        current_text = self.view.get_template_text()
 
-        if current_ped_text in self.attr_db["Name"]:
+        self.cur_obj = None
 
-            self.cur_ped = None
+        if current_text in self.attr_db["Name"]:
 
-            for ped in self.ped_list:
-                if ped.Name.upper() == current_ped_text.upper():
-                    self.cur_ped = ped
+            for GTA_object in self.object_list:
+                if GTA_object.Name.upper() == current_text.upper():
+                    self.cur_obj = GTA_object
 
-            self.view.generate_ped_param_form(self.attr_db, self.cur_ped)
+            temp_type = GTA_object.object_type.upper()
+
+            self.view.generate_param_form(self.attr_db, self.cur_obj, temp_type)
 
         else:
-            self.view.error_dialogs("INVALID TEMPLATE", current_ped_text)
+            self.view.error_dialogs("INVALID TEMPLATE", current_text)
 
-        return self.cur_ped
+        return self.cur_obj
 
     def generate_xml(self):
         new_val_dict = {}
-
+        slot_list = []
         for param in range(self.view.scroll_form_layout.rowCount()):
             # itemAt(row, column) - column index [0(Label), 1(Lineedit/combobox)]
             row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
             row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
 
+            if (
+                row_label == "SlotNavigateOrder Number"
+                or row_label == "SlotBestOrder Number"
+            ):
+                slot_list.append((row_label.split(" ")[0], row_param_widget.text()))
+                continue
+
             if isinstance(row_param_widget, QLineEdit):
                 new_val_dict[row_label] = row_param_widget.text()
 
-            elif isinstance(row_param_widget, QComboBox) or isinstance(
-                row_param_widget, QLabel
-            ):
-                # Added children to XML tag if it has any
-                # Manual adding of HasChildren and Item in label generation
-                cur_label = row_label.split(" ")[0]
-                if "HasChildren" in row_label:
-                    new_val_dict[cur_label] = []
-                elif "Item" in row_label:
-                    new_val_dict[cur_label].append(row_param_widget.currentText())
-                else:
-                    new_val_dict[row_label] = row_param_widget.currentText()
+            elif isinstance(row_param_widget, QComboBox):
+                new_val_dict[row_label] = row_param_widget.currentText()
 
-        custom_ped, err_mess = ped_xml_funcs.generate_new_ped(
-            self.cur_ped, new_val_dict
-        )
+        custom_obj, err_mess = xml_parse.generate_new_object(self.cur_obj, new_val_dict)
 
         if not err_mess:
-            save_path = "."
-
             save_dialog = QFileDialog(self.view)
             save_path = save_dialog.getExistingDirectory(
                 self.view, "Save Location", ".", QFileDialog.DontUseNativeDialog
             )
             if save_path == "":
-                save_path = "."
-            ped_xml_funcs.ped_xml_writer(custom_ped, save_path)
-
-            QMessageBox.information(
-                QWidget(),
-                "SUCCESS",
-                "SUCCESS:\nCheck peds.meta file for the custom ped!",
-            )
-            self.view.statusBar().showMessage(
-                f"Success! Your custom ped has been written to {save_path}/peds.meta"
-            )
+                pass
+            else:
+                temp_type = custom_obj.object_type
+                xml_parse.xml_writer(custom_obj, save_path, temp_type, slot_list)
+                QMessageBox.information(
+                    QWidget(),
+                    "SUCCESS",
+                    f"SUCCESS:\nCheck {save_path} file for the custom {temp_type}!",
+                )
+                self.view.statusBar().showMessage(
+                    f"Success! Your custom {temp_type} has been written to {save_path}"
+                )
         else:
             self.view.error_dialogs(
-                err_message, "ERROR:\nCustom ped generation failed! Try again."
+                err_message, f"ERROR:\nCustom {temp_type} generation failed! Try again."
             )
 
     def close_tab(self, index):
@@ -269,16 +266,13 @@ class GTAVController:
         rename_button_group.accepted.connect(tab_rename_dialog.accept)
         rename_button_group.rejected.connect(tab_rename_dialog.reject)
 
-        tab_rename_dialog.exec_()
+        result = tab_rename_dialog.exec_()
 
-        if QDialog.accepted:
+        if result == QDialog.Accepted:
             # [PED, PEDPERS, WEAP, WEAPARCH, WEAPANIM, WEAPCOMP, LOAD, PICKUP]
-            if self.view.tab_area.tabText(index).split(":")[0] == "PED":
-                new_name = f"PED:{rename_edit.text()}"
-                self.view.tab_area.setTabText(index, new_name)
-            else:
-                new_name = f"{rename_edit.text()}"
-                self.view.tab_area.setTabText(index, new_name)
+            tab_type = self.view.tab_area.tabText(index).split(":")[0]
+            new_name = f"{tab_type}:{rename_edit.text()}"
+            self.view.tab_area.setTabText(index, new_name)
 
 
 class GTAVMainWindow(QMainWindow):
@@ -290,7 +284,7 @@ class GTAVMainWindow(QMainWindow):
         # Main window settings
         self.setWindowTitle(f"GTA V Addon META Creator V{APP_VERSION}")
         # setGeometry(x-pos, y-pos, width, height)
-        self.setGeometry(800, 200, 715, 500)
+        self.setGeometry(200, 100, 1300, 800)
 
         # Status bar located at bottom of window
         self.statusBar()
@@ -412,7 +406,7 @@ class GTAVMainWindow(QMainWindow):
             self.title_label.setFont(QFont("pricedown", 20))
         except:
             self.title_label.setFont(QFont("Arial", 20))
-        self.author_label = QLabel("By: Steeldrgn")
+        self.author_label = QLabel(f"By: {AUTHOR}")
         self.author_label.setFixedHeight(30)
         self.author_label.setAlignment(Qt.AlignCenter)
         try:
@@ -436,7 +430,6 @@ class GTAVMainWindow(QMainWindow):
         self.path_line_edit.setPlaceholderText("PATH TO META or XML FILE")
         self.path_line_edit.setAlignment(Qt.AlignCenter)
 
-        # TODO: Change to variable load
         self.path_btn = QPushButton("Load File")
 
         # Add to self layout
@@ -490,8 +483,8 @@ class GTAVMainWindow(QMainWindow):
 
     def populate_cbox(self, object_list):
         """
-        Add all ped objects to the combo box
-        Connects the load peds file button
+        Add all objects to the combo box
+        Connects the load file button
         """
         for item in object_list:
             self.template_cbox.addItem(item.Name)
@@ -499,10 +492,10 @@ class GTAVMainWindow(QMainWindow):
         if self.template_cbox.count() > 1:
             self.template_cbox.setDisabled(False)
 
-    def generate_ped_param_form(self, attr_dict, cur_ped_template):
+    def generate_param_form(self, attr_dict, cur_template, temp_type):
         """
-        Populate the scroll bar area with ped params
-        Connects the Load Template button
+        Populate the scroll bar area with object params
+        Connects the "Load Template" button
         """
         # ONE PAGE
         scroll_area = QScrollArea()
@@ -512,37 +505,107 @@ class GTAVMainWindow(QMainWindow):
         scroll_widget.setLayout(self.scroll_form_layout)
         scroll_area.setWidget(scroll_widget)
 
-        for k, v in cur_ped_template.return_att_dict().items():
-            # Allow editing of name
-            if k == "Name":
-                self.scroll_form_layout.addRow(QLabel(k), QLineEdit(v))
-            elif v == None:
-                self.scroll_form_layout.addRow(QLabel(k), QLineEdit())
-            elif isinstance(v, list):
-                param_label = QLabel(f"{k} HasChildren")
-                param_label2 = QLabel("See Items Below:")
-                self.scroll_form_layout.addRow(param_label, param_label2)
+        if temp_type == "WEAP":
+            # Slot Navigate order number
+            self.slotnav_name_label = QLabel("SlotNavigateOrder Number")
+            self.slotnav_line_edit = QLineEdit("0")
+            self.slotnav_line_edit.setAlignment(Qt.AlignHCenter)
+            self.scroll_form_layout.addRow(
+                self.slotnav_name_label, self.slotnav_line_edit
+            )
 
-                for item in v:
-                    param_label = QLabel(f"{k} Item")
-                    param_cbox = QComboBox()
-                    param_cbox.addItem(item.text)
-                    param_cbox.setEditable(True)
-                    param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
-                    param_cbox.setCurrentText(item.text)
-                    self.scroll_form_layout.addRow(param_label, param_cbox)
+            # Slot best order number
+            self.slotbest_label = QLabel("SlotBestOrder Number")
+            self.slotbest_line_edit = QLineEdit("0")
+            self.slotbest_line_edit.setAlignment(Qt.AlignHCenter)
+            self.scroll_form_layout.addRow(self.slotbest_label, self.slotbest_line_edit)
+
+        for k, v in cur_template.return_att_dict().items():
+            # Only internal use
+            if k == "object_type":
+                pass
+            # Allow editing of name
+            elif k == "Name":
+                self.name_label = QLabel(k)
+                self.name_label.setAlignment(Qt.AlignHCenter)
+                self.name_line_edit = QLineEdit(v)
+                self.name_line_edit.setAlignment(Qt.AlignHCenter)
+                self.scroll_form_layout.addRow(self.name_label, self.name_line_edit)
+            elif v == None:
+                param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
+                self.scroll_form_layout.addRow(param_label, QLineEdit())
+            # Some lists have items with different tags -> Weapons.meta file
+            # <Fx>, <Explosion>, <WeaponFlags>
+            elif k == "WeaponFlags":
+                # Will have a dialog with checkboxes
+                param_label = QLabel(f"{k} Params")
+                param_label.setAlignment(Qt.AlignHCenter)
+                self.param_btn = QPushButton(f"Edit {k}")
+                # Connecting edit param button with extra parameters
+                # Need a lambda function, x is the first argument which is a boolean
+                self.param_btn.clicked.connect(
+                    lambda x, cur_temp=cur_template, attr_dict=attr_dict: self.edit_weapon_flags(
+                        cur_temp, attr_dict
+                    )
+                )
+                self.scroll_form_layout.addRow(param_label, self.param_btn)
+
+            elif isinstance(v, list):
+                param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
+
+                # Separate dialog for parameters that have children elements
+                self.param_btn = QPushButton(f"Edit {k}")
+
+                # Clicked returns boolean, so need x as first parameter
+                self.param_btn.clicked.connect(
+                    lambda x, cur_temp=cur_template, btn_text=self.param_btn.text(): self.edit_param_clicked(
+                        cur_temp, btn_text
+                    )
+                )
+
+                self.scroll_form_layout.addRow(param_label, self.param_btn)
 
             elif isinstance(v, LET._Attrib):
                 param_label = QLabel(k)
-                param_edit_line = QLineEdit(v["value"])
+                param_label.setAlignment(Qt.AlignHCenter)
+                # For peds [value]
+                # For weapons: [value, ref, (x,y,z), ]
+                xyz_layout = QHBoxLayout()
+                attrib_keys = v.keys()
 
-                self.scroll_form_layout.addRow(param_label, param_edit_line)
+                if "value" in attrib_keys:
+                    param_edit_line = QLineEdit(v["value"])
+                elif "ref" in attrib_keys:
+                    param_edit_line = QLineEdit(v["ref"])
+
+                # Some params have x,y or x,y,z
+                elif len(v) >= 2:
+                    for xyz, val in v.items():
+                        xyz_label = QLabel(xyz)
+                        xyz_line_edit = QLineEdit(val)
+                        xyz_line_edit.setAlignment(Qt.AlignHCenter)
+                        xyz_layout.addWidget(xyz_label)
+                        xyz_layout.addWidget(xyz_line_edit)
+
+                # Set alignment for Qlineedit to center
+                param_edit_line.setAlignment(Qt.AlignHCenter)
+
+                if xyz_layout.count() > 0:
+                    self.scroll_form_layout.addRow(param_label, xyz_layout)
+                else:
+                    self.scroll_form_layout.addRow(param_label, param_edit_line)
 
             elif isinstance(v, str):
                 param_label = QLabel(k)
+                param_label.setAlignment(Qt.AlignHCenter)
 
                 if k in attr_dict.keys():
                     param_cbox = QComboBox()
+                    param_cbox.setSizeAdjustPolicy(
+                        QComboBox.AdjustToMinimumContentsLength
+                    )
                     param_cbox.addItems(attr_dict[k])
                     param_cbox.setEditable(True)
                     param_cbox.setInsertPolicy(QComboBox.InsertAtTop)
@@ -551,10 +614,345 @@ class GTAVMainWindow(QMainWindow):
 
                 else:
                     param_edit_line = QLineEdit(v)
+                    param_edit_line.setAlignment(Qt.AlignHCenter)
                     self.scroll_form_layout.addRow(param_label, param_edit_line)
 
-        self.tab_area.addTab(scroll_area, f"PED: {cur_ped_template.Name}")
+        self.tab_area.addTab(scroll_area, f"{temp_type}: {cur_template.Name}")
         self.generate_btn.setDisabled(False)
+
+    def edit_param_clicked(self, cur_temp, btn_text):
+        param = btn_text.split(" ")[-1]
+        param_dialog = QDialog()
+        # (Width, Height)
+        param_dialog.setMaximumSize(1200, 1000)
+        param_dialog.setMinimumSize(350, 250)
+        param_layout = QVBoxLayout()
+
+        param_dialog.setWindowTitle(f"Edit {param}")
+
+        dialog_buttons = QDialogButtonBox(
+            QDialogButtonBox.Save | QDialogButtonBox.Cancel
+        )
+
+        dialog_scroll = QScrollArea()
+        dialog_scroll.setWidgetResizable(True)
+        dialog_scroll_widget = QWidget()
+        dialog_form_layout = QFormLayout()
+        dialog_scroll_widget.setLayout(dialog_form_layout)
+        dialog_scroll.setWidget(dialog_scroll_widget)
+
+        # getattr() for accessing attribute of class with variable
+        children_list = getattr(cur_temp, param)
+        # Empty parameter set - e.g. AttachPoints for melee weapons
+        if len(children_list) < 1:
+            QMessageBox.information(
+                self, "No Extra Params", f"There is nothing to edit for {param}."
+            )
+            cur_temp.param = None
+            return
+
+        # TODO: Recursion?
+        elif param == "OverrideForces":
+            for force_item in children_list:
+                for k, v in force_item.items():
+                    self.item_label = QLabel(k)
+                    self.item_label.setAlignment(Qt.AlignHCenter)
+                    dialog_form_layout.addWidget(self.item_label)
+                    for force_param in v:
+                        for k, v in force_param.items():
+                            if k == "BoneTag":
+                                self.force_name = QLabel(k)
+                                self.force_value = QLineEdit(v)
+
+                            else:
+                                self.force_name = QLabel(k)
+                                self.force_value = QLineEdit(v["value"])
+
+                            self.force_name.setAlignment(Qt.AlignHCenter)
+                            self.force_value.setAlignment(Qt.AlignHCenter)
+
+                            dialog_form_layout.addRow(self.force_name, self.force_value)
+
+        elif param == "AttachPoints":
+            for attach_point_elements in children_list:
+                for k, v in attach_point_elements.items():
+                    self.attach_label = QLabel(f"AttachPoint {k}")
+                    self.attach_label.setAlignment(Qt.AlignHCenter)
+                    dialog_form_layout.addWidget(self.attach_label)
+                    # Bone
+                    self.bone_label = QLabel("AttachBone")
+                    self.bone_label.setAlignment(Qt.AlignHCenter)
+                    self.bone_edit = QLineEdit(v[0]["AttachBone"])
+                    self.bone_edit.setAlignment(Qt.AlignHCenter)
+                    dialog_form_layout.addRow(self.bone_label, self.bone_edit)
+
+                    # Components
+                    # TODO: Recursion?
+                    # Component Dictionary
+                    for k1, v1 in v[1].items():
+                        # List of comp item param dictionaries
+                        for comp_items in v1:
+                            # Item dictionaries
+                            for k2, v2 in comp_items.items():
+                                self.comp_item_label = QLabel("Component Item")
+                                self.comp_item_label.setAlignment(Qt.AlignHCenter)
+                                dialog_form_layout.addWidget(self.comp_item_label)
+                                for comp_param in v2:
+                                    for k3, v3 in comp_param.items():
+                                        if k3 == "Name":
+                                            self.comp_param_label = QLabel(k3)
+                                            self.comp_param_edit = QLineEdit(v3)
+                                        elif k3 == "Default":
+                                            self.comp_param_label = QLabel(k3)
+                                            self.comp_param_edit = QLineEdit(
+                                                v3["value"]
+                                            )
+
+                                        self.comp_param_label.setAlignment(
+                                            Qt.AlignHCenter
+                                        )
+                                        self.comp_param_edit.setAlignment(
+                                            Qt.AlignHCenter
+                                        )
+                                        dialog_form_layout.addRow(
+                                            self.comp_param_label, self.comp_param_edit
+                                        )
+
+        elif param == "CamoDiffuseTexIdxs":
+            # List of camo textures
+            for camo in children_list:
+                # dialog_form_layout.addWidget(QLabel("Camo Texture Item"))
+                # Item key: name of texture
+                for k, v in camo.attrib.items():
+                    camo_text_label = QLabel(k)
+                    camo_text_line_edit = QLineEdit(v)
+
+                    dialog_form_layout.addRow(camo_text_label, camo_text_line_edit)
+
+                # Children items for camo texture
+                camo_items = camo.findall("Item")
+                for item in camo_items:
+                    camo_hlayout = QHBoxLayout()
+                    item_label = QLabel("Item")
+                    item_label.setAlignment(Qt.AlignVCenter)
+
+                    # Item attributes
+                    for attrib_label, attrib_value in item.attrib.items():
+                        item_name_label = QLabel(attrib_label)
+                        item_name_line_edit = QLineEdit(attrib_value)
+                        item_name_line_edit.setAlignment(Qt.AlignHCenter)
+                        camo_hlayout.addWidget(item_name_label)
+                        camo_hlayout.addWidget(item_name_line_edit)
+
+                    dialog_form_layout.addRow(item_label, camo_hlayout)
+
+        else:
+            for item in children_list:
+                param_label = QLabel(f"{item.tag}")
+                param_label.setAlignment(Qt.AlignHCenter)
+                param_line_edit = QLineEdit()
+                param_line_edit.setAlignment(Qt.AlignHCenter)
+                # For attributes with XYZ elements
+                xyz_layout = QHBoxLayout()
+
+                if item.text:
+                    param_line_edit.setText(item.text)
+                    dialog_form_layout.addRow(param_label, param_line_edit)
+
+                elif item.attrib:
+                    attrib_keys = item.attrib.keys()
+                    if "value" in attrib_keys:
+                        param_line_edit.setText(item.attrib["value"])
+                        # param_edit_line = QLineEdit(item.attrib['value'])
+                    elif "ref" in attrib_keys:
+                        param_line_edit.setText(item.attrib["ref"])
+                    # Some params only have and x,y and x,y,z
+                    # Create a layout that holds all coordinates for the second part of form
+                    elif len(item.attrib) >= 2:
+                        for k, v in item.attrib.items():
+                            k_label = QLabel(k)
+                            v_edit = QLineEdit(v)
+                            v_edit.setAlignment(Qt.AlignHCenter)
+                            xyz_layout.addWidget(k_label)
+                            xyz_layout.addWidget(v_edit)
+
+                if xyz_layout.count() > 0:
+                    dialog_form_layout.addRow(param_label, xyz_layout)
+                else:
+                    dialog_form_layout.addRow(param_label, param_line_edit)
+
+        param_layout.addWidget(dialog_scroll)
+        param_layout.addWidget(dialog_buttons)
+        param_dialog.setLayout(param_layout)
+
+        dialog_buttons.accepted.connect(param_dialog.accept)
+        dialog_buttons.rejected.connect(param_dialog.reject)
+
+        result = param_dialog.exec_()
+
+        if result == QDialog.Accepted:
+            self.save_params(cur_temp, param, dialog_form_layout)
+
+    def save_params(self, cur_temp, param, layout_items):
+        row_pair_list = []
+        new_pair = []
+        count = 0
+
+        if param == "OverrideForces":
+            for item in range(layout_items.count()):
+                item_text = layout_items.itemAt(item).widget().text()
+                if item_text == "Item":
+                    continue
+                if count == 6:
+                    row_pair_list.append(tuple(new_pair))
+                    count = 1
+                    new_pair = [item_text]
+                else:
+                    new_pair.append(item_text)
+                    count += 1
+
+            row_pair_list.append(tuple(new_pair))
+
+        elif param == "AttachPoints":
+            attach_points = {}
+            attach_items = []
+            for item in range(layout_items.count()):
+                item_text = layout_items.itemAt(item).widget().text()
+                # Each label with attachpoint item creates a new item dictionary containing components
+                # Does not add attachpoint item label to dictionary
+                if item_text == "AttachPoint Item":
+                    if len(attach_points) == 0:
+                        pass
+                    # Ensures adding <label:value> pairs to the item dictionary
+                    # Adds the Default:true/false to end of first attachpoint
+                    elif len(attach_items) == 2:
+                        attach_points["Item"].append(tuple(attach_items))
+                        attach_items = []
+                        row_pair_list.append(attach_points.copy())
+
+                    # Creates new empty list for next item
+                    attach_points["Item"] = []
+                    continue
+
+                # Does not add component item to list/dictionary
+                if item_text == "Component Item":
+                    attach_points["Item"].append(tuple(attach_items))
+                    attach_items = []
+                    continue
+                if len(attach_items) != 2:
+                    attach_items.append(item_text)
+                else:
+                    attach_points["Item"].append(tuple(attach_items))
+                    attach_items = [item_text]
+            # Add last pair to list
+            attach_points["Item"].append(tuple(attach_items))
+            row_pair_list.append(attach_points)
+
+        else:
+
+            for item in range(layout_items.count()):
+                form_widget = layout_items.itemAt(item)
+
+                # If item is a widget - Text associated with it
+                if isinstance(form_widget, QWidgetItem):
+                    item_text = form_widget.widget().text()
+                    # if item_text == 'Camo Texture Item':
+                    #     continue
+
+                # For items with a layout containing multiple fields
+                elif isinstance(form_widget, QHBoxLayout):
+                    item_text = []
+                    item_pair = []
+                    hbox_param_layout = form_widget.layout()
+                    for index in range(hbox_param_layout.count()):
+                        xyz_text = hbox_param_layout.itemAt(index).widget().text()
+                        # First index is label (x ,y ,z)
+                        if index % 2 == 0:
+                            item_pair.append(xyz_text)
+
+                        # Second index is the value
+                        else:
+                            item_pair.append(xyz_text)
+                            item_text.append(tuple(item_pair))
+                            item_pair = []
+
+                # Loop through all other parameters
+                if item % 2 == 0:
+                    new_pair.append(item_text)
+                else:
+                    new_pair.append(item_text)
+                    row_pair_list.append(tuple(new_pair))
+                    new_pair = []
+
+        print(getattr(cur_temp, param))
+        # print(row_pair_list)
+        new_params = xml_parse.element_maker(param, row_pair_list)
+
+        cur_temp.update_attr(new_params)
+        print(getattr(cur_temp, param))
+
+    def edit_weapon_flags(self, cur_temp, attr_dict):
+        flag_dialog = QDialog()
+        flag_dialog.setWindowTitle("Edit WeaponFlags")
+        flag_dialog_btns = QDialogButtonBox(
+            QDialogButtonBox.Save | QDialogButtonBox.Cancel
+        )
+        # Width, Height
+        flag_dialog.setMinimumSize(350, 250)
+        flag_dialog_vlayout = QVBoxLayout()
+        flag_checkbox_layout = QGridLayout()
+        weap_flag_label = QLabel("WeaponFlags")
+
+        flag_dialog_vlayout.addWidget(weap_flag_label)
+        flag_dialog_vlayout.addLayout(flag_checkbox_layout)
+        flag_dialog_vlayout.addWidget(flag_dialog_btns)
+
+        weapon_flags = cur_temp.WeaponFlags
+        weapflag_list = weapon_flags.split(" ")
+
+        flag_qobjects = []
+        for weap_flag in sorted(attr_dict["WeaponFlags"]):
+            if weap_flag in weapflag_list:
+                flag_check = QCheckBox(weap_flag)
+                flag_check.setChecked(True)
+                flag_qobjects.append(flag_check)
+            else:
+                flag_check = QCheckBox(weap_flag)
+                flag_check.setChecked(False)
+                flag_qobjects.append(flag_check)
+
+        # Making grid labels for gridlayout - 96 different flags
+        grid_list = []
+        # Rows -> Columns
+        for i in range(20):
+            for j in range(5):
+                grid_list.append((i, j))
+
+        num = 0
+        try:
+            for flag_obj in flag_qobjects:
+                flag_checkbox_layout.addWidget(
+                    flag_obj, grid_list[num][0], grid_list[num][1]
+                )
+                num += 1
+        except IndexError:
+            pass
+
+        flag_dialog.setLayout(flag_dialog_vlayout)
+
+        flag_dialog_btns.accepted.connect(flag_dialog.accept)
+        flag_dialog_btns.rejected.connect(flag_dialog.reject)
+
+        result = flag_dialog.exec_()
+
+        if result == QDialog.Accepted:
+            checked_flags = []
+            for item_num in range(flag_checkbox_layout.count()):
+                item = flag_checkbox_layout.itemAt(item_num)
+                if item.widget().isChecked():
+                    checked_flags.append(item.widget().text())
+
+            cur_temp.WeaponFlags = " ".join(checked_flags)
 
     def error_dialogs(self, error, other_message=None):
         """
@@ -568,18 +966,14 @@ class GTAVMainWindow(QMainWindow):
                 error,
                 "ERROR: \nFile cannot be found. Are you pointing to the right place?",
             )
-        elif error == "NOT VALID PEDS FILE":
+        elif error == "XML PARSE ERROR":
             QMessageBox.warning(
-                self,
-                error,
-                "ERROR: \nNot a valid peds.ymt.xml or peds.meta file! Choose a different file!",
+                self, error, "Error: \n Could not parse file. Possible Corruption?"
             )
         elif error == "INVALID TEMPLATE":
             QMessageBox.warning(
-                self, error, f"ERROR: \n{other_message} is not a valid ped template."
+                self, error, f"ERROR: \n{other_message} is not a valid template."
             )
-        elif error == "NO PED INFO":
-            QMessageBox.warning(self, error, other_message)
         elif error == "GENERATE FAILED":
             QMessageBox(self, error, other_message)
 
@@ -589,13 +983,13 @@ class GTAVMainWindow(QMainWindow):
             self.template_cbox.addItem("-----Choose A Template-----")
             self.template_cbox.setCurrentIndex(0)
 
-    def get_ped_path_text(self):
+    def get_path_text(self):
         return self.path_line_edit.text()
 
-    def set_ped_file_path(self, file_path):
+    def set_file_path(self, file_path):
         self.path_line_edit.setText(file_path)
 
-    def get_ped_template_text(self):
+    def get_template_text(self):
         return self.template_cbox.currentText()
 
 
