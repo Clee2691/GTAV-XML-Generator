@@ -12,7 +12,7 @@ Now there is no need to copy, paste, and change individual files for every addon
 
 ### :package: Check `Release` section for the latest built binaries!
 
-![app_ss](readme_imgs/v2.PNG)
+![app_ss](readme_imgs/v2.png)
 
 ### Current Features V2.0 - 20 June 2020
 
