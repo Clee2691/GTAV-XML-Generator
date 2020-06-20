@@ -485,7 +485,23 @@ def element_maker(param, new_param_list):
                 new_ele = LET.Element(pair[0])
                 new_ele.text = pair[1]
                 element_dict[param].append(new_ele)
-                
+
+    elif param == 'CamoDiffuseTexIdxs':
+        print(new_param_list)
+        element_dict[param] = []
+
+        main_item = new_param_list[0]
+        camo_base = LET.Element('Item', {main_item[0]:main_item[1]})
+        for value in new_param_list[1:]:
+            att_label, att_value = value
+            att_dict = {}
+            for dict_attr in att_value:
+                att_dict[dict_attr[0]] = dict_attr[1]
+
+            LET.SubElement(camo_base, att_label, att_dict)
+
+        element_dict[param].append(camo_base)
+            
     else:
         # List of elements
         element_dict[param] = []

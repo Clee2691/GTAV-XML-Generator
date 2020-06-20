@@ -721,7 +721,7 @@ class GTAVMainWindow(QMainWindow):
         elif param == "CamoDiffuseTexIdxs":
             # List of camo textures
             for camo in children_list:
-                dialog_form_layout.addWidget(QLabel("Camo Texture Item"))
+                # dialog_form_layout.addWidget(QLabel("Camo Texture Item"))
                 # Item key: name of texture
                 for k, v in camo.attrib.items():
                     camo_text_label = QLabel(k)
@@ -732,10 +732,7 @@ class GTAVMainWindow(QMainWindow):
                 # Children items for camo texture
                 camo_items = camo.findall("Item")
                 for item in camo_items:
-                    camo_widget = QWidget()
                     camo_hlayout = QHBoxLayout()
-                    camo_widget.setLayout(camo_hlayout)
-
                     item_label = QLabel("Item")
                     item_label.setAlignment(Qt.AlignVCenter)
 
@@ -747,7 +744,7 @@ class GTAVMainWindow(QMainWindow):
                         camo_hlayout.addWidget(item_name_label)
                         camo_hlayout.addWidget(item_name_line_edit)
 
-                    dialog_form_layout.addRow(item_label, camo_widget)
+                    dialog_form_layout.addRow(item_label, camo_hlayout)
 
         else:
             for item in children_list:
@@ -826,7 +823,7 @@ class GTAVMainWindow(QMainWindow):
                 if item_text == "AttachPoint Item":
                     if len(attach_points) == 0:
                         pass
-                    # Ensures adding label: value pairs to the item dictionary
+                    # Ensures adding <label:value> pairs to the item dictionary
                     # Adds the Default:true/false to end of first attachpoint
                     elif len(attach_items) == 2:
                         attach_points["Item"].append(tuple(attach_items))
@@ -859,8 +856,10 @@ class GTAVMainWindow(QMainWindow):
                 # If item is a widget - Text associated with it
                 if isinstance(form_widget, QWidgetItem):
                     item_text = form_widget.widget().text()
+                    # if item_text == 'Camo Texture Item':
+                    #     continue
 
-                # For items with XYZ attrib values
+                # For items with a layout containing multiple fields
                 elif isinstance(form_widget, QHBoxLayout):
                     item_text = []
                     item_pair = []
