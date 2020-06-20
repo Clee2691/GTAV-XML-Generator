@@ -206,8 +206,11 @@ class GTAVController:
             row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
             row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
 
-            if row_label == 'SlotNavigateOrder Number' or row_label == 'SlotBestOrder Number':
-                slot_list.append((row_label.split(' ')[0], row_param_widget.text()))
+            if (
+                row_label == "SlotNavigateOrder Number"
+                or row_label == "SlotBestOrder Number"
+            ):
+                slot_list.append((row_label.split(" ")[0], row_param_widget.text()))
                 continue
 
             if isinstance(row_param_widget, QLineEdit):
@@ -502,16 +505,18 @@ class GTAVMainWindow(QMainWindow):
         scroll_widget.setLayout(self.scroll_form_layout)
         scroll_area.setWidget(scroll_widget)
 
-        if temp_type == 'WEAP':
+        if temp_type == "WEAP":
             # Slot Navigate order number
-            self.slotnav_name_label = QLabel('SlotNavigateOrder Number')
-            self.slotnav_line_edit = QLineEdit('0')
+            self.slotnav_name_label = QLabel("SlotNavigateOrder Number")
+            self.slotnav_line_edit = QLineEdit("0")
             self.slotnav_line_edit.setAlignment(Qt.AlignHCenter)
-            self.scroll_form_layout.addRow(self.slotnav_name_label, self.slotnav_line_edit)
+            self.scroll_form_layout.addRow(
+                self.slotnav_name_label, self.slotnav_line_edit
+            )
 
             # Slot best order number
-            self.slotbest_label = QLabel('SlotBestOrder Number')
-            self.slotbest_line_edit = QLineEdit('0')
+            self.slotbest_label = QLabel("SlotBestOrder Number")
+            self.slotbest_line_edit = QLineEdit("0")
             self.slotbest_line_edit.setAlignment(Qt.AlignHCenter)
             self.scroll_form_layout.addRow(self.slotbest_label, self.slotbest_line_edit)
 
@@ -712,6 +717,37 @@ class GTAVMainWindow(QMainWindow):
                                         dialog_form_layout.addRow(
                                             self.comp_param_label, self.comp_param_edit
                                         )
+
+        elif param == "CamoDiffuseTexIdxs":
+            # List of camo textures
+            for camo in children_list:
+                dialog_form_layout.addWidget(QLabel("Camo Texture Item"))
+                # Item key: name of texture
+                for k, v in camo.attrib.items():
+                    camo_text_label = QLabel(k)
+                    camo_text_line_edit = QLineEdit(v)
+
+                    dialog_form_layout.addRow(camo_text_label, camo_text_line_edit)
+
+                # Children items for camo texture
+                camo_items = camo.findall("Item")
+                for item in camo_items:
+                    camo_widget = QWidget()
+                    camo_hlayout = QHBoxLayout()
+                    camo_widget.setLayout(camo_hlayout)
+
+                    item_label = QLabel("Item")
+                    item_label.setAlignment(Qt.AlignVCenter)
+
+                    # Item attributes
+                    for attrib_label, attrib_value in item.attrib.items():
+                        item_name_label = QLabel(attrib_label)
+                        item_name_line_edit = QLineEdit(attrib_value)
+                        item_name_line_edit.setAlignment(Qt.AlignHCenter)
+                        camo_hlayout.addWidget(item_name_label)
+                        camo_hlayout.addWidget(item_name_line_edit)
+
+                    dialog_form_layout.addRow(item_label, camo_widget)
 
         else:
             for item in children_list:
