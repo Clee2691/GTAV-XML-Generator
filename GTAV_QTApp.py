@@ -1,5 +1,6 @@
 from functions import xml_parse
 import sys
+import logging
 
 from PyQt5.QtWidgets import *
 from PyQt5.QtCore import *
@@ -718,34 +719,6 @@ class GTAVMainWindow(QMainWindow):
                                             self.comp_param_label, self.comp_param_edit
                                         )
 
-        elif param == "CamoDiffuseTexIdxs":
-            # List of camo textures
-            for camo in children_list:
-                # dialog_form_layout.addWidget(QLabel("Camo Texture Item"))
-                # Item key: name of texture
-                for k, v in camo.attrib.items():
-                    camo_text_label = QLabel(k)
-                    camo_text_line_edit = QLineEdit(v)
-
-                    dialog_form_layout.addRow(camo_text_label, camo_text_line_edit)
-
-                # Children items for camo texture
-                camo_items = camo.findall("Item")
-                for item in camo_items:
-                    camo_hlayout = QHBoxLayout()
-                    item_label = QLabel("Item")
-                    item_label.setAlignment(Qt.AlignVCenter)
-
-                    # Item attributes
-                    for attrib_label, attrib_value in item.attrib.items():
-                        item_name_label = QLabel(attrib_label)
-                        item_name_line_edit = QLineEdit(attrib_value)
-                        item_name_line_edit.setAlignment(Qt.AlignHCenter)
-                        camo_hlayout.addWidget(item_name_label)
-                        camo_hlayout.addWidget(item_name_line_edit)
-
-                    dialog_form_layout.addRow(item_label, camo_hlayout)
-
         else:
             for item in children_list:
                 param_label = QLabel(f"{item.tag}")
@@ -823,7 +796,7 @@ class GTAVMainWindow(QMainWindow):
                 if item_text == "AttachPoint Item":
                     if len(attach_points) == 0:
                         pass
-                    # Ensures adding <label:value> pairs to the item dictionary
+                    # Ensures adding label: value pairs to the item dictionary
                     # Adds the Default:true/false to end of first attachpoint
                     elif len(attach_items) == 2:
                         attach_points["Item"].append(tuple(attach_items))
@@ -856,10 +829,8 @@ class GTAVMainWindow(QMainWindow):
                 # If item is a widget - Text associated with it
                 if isinstance(form_widget, QWidgetItem):
                     item_text = form_widget.widget().text()
-                    # if item_text == 'Camo Texture Item':
-                    #     continue
 
-                # For items with a layout containing multiple fields
+                # For items with XYZ attrib values
                 elif isinstance(form_widget, QHBoxLayout):
                     item_text = []
                     item_pair = []
@@ -884,12 +855,9 @@ class GTAVMainWindow(QMainWindow):
                     row_pair_list.append(tuple(new_pair))
                     new_pair = []
 
-        print(getattr(cur_temp, param))
-        # print(row_pair_list)
         new_params = xml_parse.element_maker(param, row_pair_list)
 
         cur_temp.update_attr(new_params)
-        print(getattr(cur_temp, param))
 
     def edit_weapon_flags(self, cur_temp, attr_dict):
         flag_dialog = QDialog()
@@ -1022,7 +990,7 @@ def main():
         pd_font_fam = font_db.applicationFontFamilies(font_id)
         pricedown = QFont(pd_font_fam[0])
     except:
-        print("Pricedown font not found, falling back to Arial")
+        logger.exception("Pricedown font not found! Will default to Arial instead")
 
     # Set all other text to Arial size 11
     app.setFont(QFont("Arial", 11))
@@ -1032,6 +1000,7 @@ def main():
         with open("settings.ini", "r") as file:
             q_settings = True
     except:
+        logger.warning("No settings.ini found.")
         pass
 
     # Main UI
@@ -1045,4 +1014,14 @@ def main():
 
 
 if __name__ == "__main__":
+
+    logger = logging.getLogger(__name__)
+    logger.setLevel(logging.DEBUG)
+
+    file_handler = logging.FileHandler("program_log.log")
+    file_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
+    file_handler.setFormatter(file_format)
+
+    logger.addHandler(file_handler)
+
     main()
