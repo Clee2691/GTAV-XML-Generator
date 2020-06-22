@@ -3,6 +3,14 @@ from pathlib import Path
 import copy
 import logging
 
+logger = logging.getLogger(__name__)
+logger.setLevel(logging.DEBUG)
+file_handler = logging.FileHandler('program_log.log')
+file_format = logging.Formatter('%(asctime)s: %(name)s - %(levelname)s - %(message)s')
+file_handler.setFormatter(file_format)
+
+logger.addHandler(file_handler)
+
 class GTAObjects:
 
     """
@@ -24,6 +32,7 @@ class GTAObjects:
         return self.__dict__
 
     def display_attributes(self):
+        # Internal use only - debugging purposes
         counter = 1
         for attr, val in self.__dict__.items():
             print(f'{counter}. Attribute: {attr} | Value: {val}')
@@ -36,7 +45,7 @@ class GTAObjects:
             else:
                 setattr(self, k, v)
 
-        return print("Attributes updated!")
+        logger.info(f'{self.Name} attributes updated.')
 
     def __repr__(self):
         return f'Name: {self.Name}'
@@ -52,9 +61,11 @@ def xml_meta_parser(xml_file):
         file_parsed = LET.parse(xml_file)
     except FileNotFoundError:
         err_message = "FILE NOT FOUND"
+        logger.warning('File not found')
         return None, err_message, None
     except LET.XMLSyntaxError:
-        err_message = "XML PARSE ERROR"
+        err_message = "XML/META PARSE ERROR"
+        logger.warning(f'{xml_file} file not readable.')
         return None, err_message, None
     
     xml_root = file_parsed.getroot()
@@ -65,6 +76,7 @@ def xml_meta_parser(xml_file):
         xml_ped_elements = xml_root.findall("./InitDatas/Item")
         ped_objects = create_parsed_objects(xml_ped_elements, 'ped')
 
+        logger.info(f'Peds parsed from {xml_file}.')
         return ped_objects, err_message, 'ped'
 
     elif xml_root.tag == 'CWeaponInfoBlob':
@@ -86,10 +98,12 @@ def xml_meta_parser(xml_file):
         
         parsed_weapon_objects = create_parsed_objects(weapon_element_list, 'weap')
         
+        logger.info(f'Weapons parsed from {xml_file}')
         return parsed_weapon_objects, err_message, 'weap'
 
     else:
         err_message = "NOT A VALID META/XML FILE"
+        logger.warning('Not a peds.meta or weapons.meta file.')
         return None, err_message, None
 
 def create_parsed_objects(xml_elements, obj_type=None):
@@ -222,12 +236,14 @@ def generate_new_object(object_template=None, new_val_dict=None):
 
     if new_val_dict == None:
         error_mess = "GENERATE FAILED"
+        logger.debug('Failed to generate a new object.')
         return error_mess
     else:
         # Deepcopy so I don't override the template ped
         new_object = copy.deepcopy(object_template)
         new_object.update_attr(new_val_dict)
 
+        logger.info('Created a new object with updated values')
         return new_object, error_mess
 
 def xml_writer(new_object, save_path, object_type=None, other_params=None):
@@ -278,6 +294,7 @@ def xml_writer(new_object, save_path, object_type=None, other_params=None):
                     LET.SubElement(slot_best_item, 'Entry').text = new_object.Slot
                     slotbest_root.append(copy.deepcopy(slot_best_item))
 
+        logger.info(f'{meta_file_path} file found. Object will be appended to it.')
     # Reconstruct the tree from scratch if no existing file
     else:
         if object_type == 'ped':
@@ -327,7 +344,7 @@ def xml_writer(new_object, save_path, object_type=None, other_params=None):
             LET.SubElement(weap_xml_root, 'Name').text = 'Custom Weapon Addons'
 
             object_tree = LET.ElementTree(weap_xml_root)
-
+        logger.info(f'{meta_file_path} file not found. Will generate a new one.')
     # All children elements under object Item
     for attr, val in new_object.return_att_dict().items():
         # List datatype specifies parameter has more child elements
@@ -389,6 +406,8 @@ def xml_writer(new_object, save_path, object_type=None, other_params=None):
     object_tree.write(
         str(meta_file_path), encoding="utf-8", xml_declaration=True, pretty_print=True
     )
+
+    logger.info(f'Object written to {meta_file_path}')
 
 # Weapon specific functions
 def weapon_slots(slot_groups):
