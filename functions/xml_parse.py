@@ -61,11 +61,11 @@ def xml_meta_parser(xml_file):
         file_parsed = LET.parse(xml_file)
     except FileNotFoundError:
         err_message = "FILE NOT FOUND"
-        logger.warning('File not found')
+        logger.exception('File not found')
         return None, err_message, None
     except LET.XMLSyntaxError:
         err_message = "XML/META PARSE ERROR"
-        logger.warning(f'{xml_file} file not readable.')
+        logger.exception(f'{xml_file} file not readable.')
         return None, err_message, None
     
     xml_root = file_parsed.getroot()
@@ -103,7 +103,7 @@ def xml_meta_parser(xml_file):
 
     else:
         err_message = "NOT A VALID META/XML FILE"
-        logger.warning('Not a peds.meta or weapons.meta file.')
+        logger.error('Not a peds.meta or weapons.meta file.')
         return None, err_message, None
 
 def create_parsed_objects(xml_elements, obj_type=None):
@@ -182,7 +182,7 @@ def create_parsed_objects(xml_elements, obj_type=None):
                     param_dictionary[param.tag] = None
 
             parsed_object_list.append(GTAObjects(param_dictionary))
-
+    logger.info('Parsed objects from file.')
     return parsed_object_list
 
 def attr_db(parsed_object_list):
@@ -223,7 +223,7 @@ def attr_db(parsed_object_list):
                     parameter_database[k].add(child.text)
             else:
                 parameter_database[k].add(v)
-
+    logger.info('Parameter database populated')
     return parameter_database
 
 def generate_new_object(object_template=None, new_val_dict=None):
@@ -236,7 +236,7 @@ def generate_new_object(object_template=None, new_val_dict=None):
 
     if new_val_dict == None:
         error_mess = "GENERATE FAILED"
-        logger.debug('Failed to generate a new object.')
+        logger.error('Failed to generate a new object.')
         return error_mess
     else:
         # Deepcopy so I don't override the template ped

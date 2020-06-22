@@ -987,7 +987,7 @@ def main():
         pd_font_fam = font_db.applicationFontFamilies(font_id)
         pricedown = QFont(pd_font_fam[0])
     except:
-        print("Pricedown font not found, falling back to Arial")
+        logger.exception('Pricedown font not found! Will default to Arial instead')
 
     # Set all other text to Arial size 11
     app.setFont(QFont("Arial", 11))
@@ -997,6 +997,7 @@ def main():
         with open("settings.ini", "r") as file:
             q_settings = True
     except:
+        logger.warning('No settings.ini found.')
         pass
 
     # Main UI
@@ -1019,5 +1020,5 @@ if __name__ == "__main__":
     file_handler.setFormatter(file_format)
 
     logger.addHandler(file_handler)
-    
+
     main()
