@@ -11,6 +11,7 @@ import lxml.etree as LET
 APP_VERSION = 2.0
 AUTHOR = "Steeldrgn"
 
+
 class GTAVController:
     """ 
     Controller class for GUI
@@ -206,8 +207,11 @@ class GTAVController:
             row_label = self.view.scroll_form_layout.itemAt(param, 0).widget().text()
             row_param_widget = self.view.scroll_form_layout.itemAt(param, 1).widget()
 
-            if row_label == 'SlotNavigateOrder Number' or row_label == 'SlotBestOrder Number':
-                slot_list.append((row_label.split(' ')[0], row_param_widget.text()))
+            if (
+                row_label == "SlotNavigateOrder Number"
+                or row_label == "SlotBestOrder Number"
+            ):
+                slot_list.append((row_label.split(" ")[0], row_param_widget.text()))
                 continue
 
             if isinstance(row_param_widget, QLineEdit):
@@ -502,16 +506,18 @@ class GTAVMainWindow(QMainWindow):
         scroll_widget.setLayout(self.scroll_form_layout)
         scroll_area.setWidget(scroll_widget)
 
-        if temp_type == 'WEAP':
+        if temp_type == "WEAP":
             # Slot Navigate order number
-            self.slotnav_name_label = QLabel('SlotNavigateOrder Number')
-            self.slotnav_line_edit = QLineEdit('0')
+            self.slotnav_name_label = QLabel("SlotNavigateOrder Number")
+            self.slotnav_line_edit = QLineEdit("0")
             self.slotnav_line_edit.setAlignment(Qt.AlignHCenter)
-            self.scroll_form_layout.addRow(self.slotnav_name_label, self.slotnav_line_edit)
+            self.scroll_form_layout.addRow(
+                self.slotnav_name_label, self.slotnav_line_edit
+            )
 
             # Slot best order number
-            self.slotbest_label = QLabel('SlotBestOrder Number')
-            self.slotbest_line_edit = QLineEdit('0')
+            self.slotbest_label = QLabel("SlotBestOrder Number")
+            self.slotbest_line_edit = QLineEdit("0")
             self.slotbest_line_edit.setAlignment(Qt.AlignHCenter)
             self.scroll_form_layout.addRow(self.slotbest_label, self.slotbest_line_edit)
 
@@ -849,12 +855,9 @@ class GTAVMainWindow(QMainWindow):
                     row_pair_list.append(tuple(new_pair))
                     new_pair = []
 
-        print(getattr(cur_temp, param))
-        # print(row_pair_list)
         new_params = xml_parse.element_maker(param, row_pair_list)
 
         cur_temp.update_attr(new_params)
-        print(getattr(cur_temp, param))
 
     def edit_weapon_flags(self, cur_temp, attr_dict):
         flag_dialog = QDialog()
@@ -987,7 +990,7 @@ def main():
         pd_font_fam = font_db.applicationFontFamilies(font_id)
         pricedown = QFont(pd_font_fam[0])
     except:
-        logger.exception('Pricedown font not found! Will default to Arial instead')
+        logger.exception("Pricedown font not found! Will default to Arial instead")
 
     # Set all other text to Arial size 11
     app.setFont(QFont("Arial", 11))
@@ -997,7 +1000,7 @@ def main():
         with open("settings.ini", "r") as file:
             q_settings = True
     except:
-        logger.warning('No settings.ini found.')
+        logger.warning("No settings.ini found.")
         pass
 
     # Main UI
@@ -1015,8 +1018,8 @@ if __name__ == "__main__":
     logger = logging.getLogger(__name__)
     logger.setLevel(logging.DEBUG)
 
-    file_handler = logging.FileHandler('program_log.log')
-    file_format = logging.Formatter('%(name)s - %(levelname)s - %(message)s')
+    file_handler = logging.FileHandler("program_log.log")
+    file_format = logging.Formatter("%(name)s - %(levelname)s - %(message)s")
     file_handler.setFormatter(file_format)
 
     logger.addHandler(file_handler)
